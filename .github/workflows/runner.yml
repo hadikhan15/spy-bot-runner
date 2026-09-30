@@ -1,0 +1,95 @@
+name: Runner
+
+# Public timer only. It runs the private bot and saves everything back into the
+# private repo. All bot output goes to a log file in the private repo, so the
+# public run logs show nothing private.
+
+on:
+  schedule:
+    - cron: "45 13,14 * * 1-5"   # morning read, ~9:45 AM New York
+    - cron: "20 14,15 * * 1-5"   # live watcher, ~10:20 AM to 3:50 PM New York
+    - cron: "0 23 1 * *"         # monthly re-test + self-tuning
+  workflow_dispatch:
+    inputs:
+      command:
+        description: "What to run"
+        type: choice
+        default: alert
+        options: [alert, watch, backtest, test-notify]
+
+permissions:
+  contents: write   # only used for the monthly heartbeat that keeps this repo active
+
+concurrency:
+  group: runner-${{ (github.event.schedule == '20 14,15 * * 1-5' || github.event.inputs.command == 'watch') && 'watch' || 'main' }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - name: Get the private bot
+        uses: actions/checkout@v5
+        with:
+          repository: hadikhan15/spy-bot
+          token: ${{ secrets.BOT_REPO_TOKEN }}
+          path: bot
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: bot/requirements.txt
+
+      - name: Install
+        run: pip install -q -r bot/requirements.txt > /dev/null 2>&1
+
+      - name: Run (output is saved privately, not shown here)
+        working-directory: bot
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          EMAIL_APP_PASSWORD: ${{ secrets.EMAIL_APP_PASSWORD }}
+        run: |
+          if [ "${{ github.event.schedule }}" = "0 23 1 * *" ]; then
+            CMD=backtest
+          elif [ "${{ github.event.schedule }}" = "20 14,15 * * 1-5" ]; then
+            CMD=watch
+          else
+            CMD="${{ github.event.inputs.command || 'alert' }}"
+          fi
+          mkdir -p logs
+          LOG="logs/$(date -u +%F)_${CMD}.log"
+          echo "=== $(date -u) $CMD ===" >> "$LOG"
+          if python spy_bot.py "$CMD" >> "$LOG" 2>&1; then
+            echo "Run finished."
+          else
+            echo "Run hit an error. Details are in the private repo's logs folder."
+          fi
+
+      - name: Save to the private repo
+        if: always()
+        working-directory: bot
+        run: |
+          git config user.name "spy-bot"
+          git config user.email "spy-bot@users.noreply.github.com"
+          for f in predictions.csv predictions_intraday.csv paper_trades.csv state.json STATUS.md PAPER_JOURNAL.md config.json CHANGELOG.md charts reports logs; do
+            if [ -e "$f" ]; then git add -A "$f"; fi
+          done
+          git diff --cached --quiet || git commit -q -m "Bot run $(date -u +%F)"
+          git pull -q --rebase --autostash > /dev/null 2>&1 && git push -q > /dev/null 2>&1
+          echo "Saved."
+
+      # GitHub pauses schedules in public repos after 60 days without commits here,
+      # so once a month this adds a harmless date stamp to this public repo.
+      - name: Keep this repo active
+        if: github.event.schedule == '0 23 1 * *'
+        run: |
+          git clone -q "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" runner
+          cd runner
+          date -u +%F > heartbeat.txt
+          git config user.name "runner"
+          git config user.email "runner@users.noreply.github.com"
+          git add heartbeat.txt
+          git diff --cached --quiet || git commit -q -m "heartbeat"
+          git push -q
