@@ -17,8 +17,10 @@ jobs:
     steps:
       - name: Start the deal bot
         env:
-          TOKEN: ${{ secrets.BOT_REPO_TOKEN }}
+          GH_TOKEN: ${{ secrets.BOT_REPO_TOKEN }}
         run: |
-          echo '{"ref":"main","inputs":{"command":"run","searches":"0"}}' > body.json
-          code=$(curl -s -o resp.json -w "%{http_code}" -X POST -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.github+json" -H "Content-Type: application/json" --data-binary @body.json "https://api.github.com/repos/hadikhan15/deal-bot/actions/workflows/deal-bot.yml/dispatches")
-          if [ "$code" = "204" ]; then echo "Started."; else echo "Could not start (HTTP $code): $(head -c 300 resp.json)"; exit 1; fi
+          if gh workflow run deal-bot.yml -R hadikhan15/deal-bot --ref main -f command=run -f searches=0 > out.txt 2>&1; then
+            echo "Started."
+          else
+            echo "Could not start: $(head -c 300 out.txt)"; exit 1
+          fi
