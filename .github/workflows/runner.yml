@@ -7,7 +7,10 @@ name: Runner
 on:
   schedule:
     - cron: "45 13,14 * * 1-5"   # morning read, ~9:45 AM New York
-    - cron: "20 14,15 * * 1-5"   # live watcher, ~10:20 AM to 3:50 PM New York
+    # live watcher: a start is offered every 30 min (9:07 AM–4:37 PM New York) because
+    # GitHub's timer can run hours late or skip. The first one to fire starts the day;
+    # later ones wait in line, and exit right away once the day is covered.
+    - cron: "7,37 13-20 * * 1-5"
     - cron: "0 23 1 * *"         # monthly re-test + self-tuning
   workflow_dispatch:
     inputs:
@@ -21,7 +24,7 @@ permissions:
   contents: write   # only used for the monthly heartbeat that keeps this repo active
 
 concurrency:
-  group: runner-${{ (github.event.schedule == '20 14,15 * * 1-5' || github.event.inputs.command == 'watch') && 'watch' || 'main' }}
+  group: runner-${{ (github.event.schedule == '7,37 13-20 * * 1-5' || github.event.inputs.command == 'watch') && 'watch' || 'main' }}
   cancel-in-progress: false
 
 jobs:
@@ -53,7 +56,7 @@ jobs:
         run: |
           if [ "${{ github.event.schedule }}" = "0 23 1 * *" ]; then
             CMD=backtest
-          elif [ "${{ github.event.schedule }}" = "20 14,15 * * 1-5" ]; then
+          elif [ "${{ github.event.schedule }}" = "7,37 13-20 * * 1-5" ]; then
             CMD=watch
           else
             CMD="${{ github.event.inputs.command || 'alert' }}"
