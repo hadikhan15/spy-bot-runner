@@ -1,0 +1,27 @@
+name: Deal bot timer
+
+# Separate from the SPY bot. Every hour (~9 AM to 11 PM New York) this just asks the
+# private deal-bot repo to run its own workflow. Nothing private is printed here.
+
+on:
+  schedule:
+    - cron: "11 13-23,0-3 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  start:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Start the deal bot
+        env:
+          TOKEN: ${{ secrets.BOT_REPO_TOKEN }}
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/hadikhan15/deal-bot/actions/workflows/deal-bot.yml/dispatches \
+            -d '{"ref":"main"}')
+          if [ "$code" = "204" ]; then echo "Started."; else echo "Could not start (HTTP $code)."; exit 1; fi
