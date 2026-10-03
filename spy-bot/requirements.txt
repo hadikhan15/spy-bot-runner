@@ -1,9 +1,0 @@
-yfinance
-pandas
-numpy
-scikit-learn
-python-dotenv
-matplotlib
-tzdata
-websocket-client
-requests
