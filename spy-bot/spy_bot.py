@@ -41,6 +41,19 @@ from sklearn.preprocessing import StandardScaler
 
 HERE = Path(__file__).resolve().parent
 load_dotenv(HERE / ".env")
+for _s in (sys.stdout, sys.stderr):                  # Windows consoles/log files: never crash on "→" or "≥"
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+# Where the bot is running: "github" (the public runner), "pc" (the home server,
+# see server/) or "local". GitHub and the PC both keep the repo in sync during the
+# day; while the PC checks in, GitHub's scheduled runs stand by so nothing trades twice.
+IN_ACTIONS = bool(os.environ.get("GITHUB_ACTIONS"))
+HOST = os.environ.get("SPYBOT_HOST") or ("github" if IN_ACTIONS else "local")
+SYNC = IN_ACTIONS or HOST == "pc"
+HEARTBEAT_REF = "pc-heartbeat"                      # branch the PC server re-points every 5 minutes
+PC_FRESH_SEC = 15 * 60                              # PC counts as running if it checked in this recently
 CONFIG_PATH = HERE / "config.json"
 CFG = json.loads(CONFIG_PATH.read_text())
 RULES, ACCT, MODEL, TRADE = CFG["rules"], CFG["account"], CFG["model"], CFG["trade"]
@@ -3591,6 +3604,10 @@ def dashboard_data():
                 "best": num(a.max()), "worst": num(a.min())}
 
     state = json.loads((HERE / "state.json").read_text()) if (HERE / "state.json").exists() else {}
+    try:
+        runner = json.loads((HERE / "runner.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        runner = None
     checks = []
     ip = HERE / "predictions_intraday.csv"
     try:
@@ -3634,7 +3651,8 @@ def dashboard_data():
         "practice_until": CFG["notify"].get("practice_until"),
         "breaker": breaker_status(),
         "last_signal": state.get("last_signal"),
-        "weekly": sorted(weekly.values(), key=lambda w: w["week"]),
+        "runner": runner,
+        "weekly":sorted(weekly.values(), key=lambda w: w["week"]),
     }
     bt = {"report": None}
     reps = sorted(OUT.glob("backtest_2*.md"))
@@ -3789,29 +3807,60 @@ def export_public(dest):
 # ============================================================= live watcher
 SAVE_FILES = ["predictions.csv", "predictions_intraday.csv", "paper_trades.csv", "state.json",
               "STATUS.md", "PAPER_JOURNAL.md", "config.json", "CHANGELOG.md", "charts", "reports", "logs",
-              "option_quotes.csv"]
+              "option_quotes.csv", "runner.json"]
+
+
+def mark_runner(status):
+    """runner.json: where the bot last ran and what it was doing (shown on the dashboard)."""
+    try:
+        (HERE / "runner.json").write_text(json.dumps(
+            {"host": HOST, "status": status, "updated": dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")}),
+            encoding="utf-8")
+    except OSError:
+        pass
 
 
 def git_save(msg="Live watcher save"):
-    """Push the bot's memory to GitHub mid-day (only inside GitHub Actions)."""
-    if not os.environ.get("GITHUB_ACTIONS"):
+    """Push the bot's memory to GitHub (inside GitHub Actions or on the home PC server)."""
+    if not SYNC:
         return
-    run = lambda *c: subprocess.run(list(c), cwd=HERE, capture_output=True, text=True)
-    run("git", "config", "user.name", "spy-bot")
-    run("git", "config", "user.email", "spy-bot@users.noreply.github.com")
-    for f in SAVE_FILES:
-        if (HERE / f).exists():
-            run("git", "add", "-A", f)
-    if run("git", "diff", "--cached", "--quiet").returncode != 0:
-        run("git", "commit", "-m", msg)
-    run("git", "pull", "--rebase", "--autostash")
-    run("git", "push")
+    run = lambda *c: subprocess.run(list(c), cwd=HERE, capture_output=True, text=True, timeout=180)
+    try:
+        run("git", "config", "user.name", "spy-bot-pc" if HOST == "pc" else "spy-bot")
+        run("git", "config", "user.email", "spy-bot@users.noreply.github.com")
+        for f in SAVE_FILES:
+            if (HERE / f).exists():
+                run("git", "add", "-A", f)
+        if run("git", "diff", "--cached", "--quiet").returncode != 0:
+            run("git", "commit", "-m", msg + (" (home PC)" if HOST == "pc" else ""))
+        run("git", "pull", "--rebase", "--autostash")
+        run("git", "push")
+    except subprocess.TimeoutExpired:
+        print("Save to GitHub timed out; will retry at the next save.", file=sys.stderr)
+
+
+def pc_active():
+    """On GitHub: has the home PC server checked in within PC_FRESH_SEC? (It re-points the
+    `pc-heartbeat` branch every 5 minutes while it's healthy.) Any doubt -> False, so
+    GitHub runs rather than nobody running."""
+    if not IN_ACTIONS:
+        return False
+    try:
+        r = subprocess.run(["git", "fetch", "-q", "origin", HEARTBEAT_REF], cwd=HERE,
+                           capture_output=True, text=True, timeout=60)
+        if r.returncode != 0:
+            return False
+        t = subprocess.run(["git", "log", "-1", "--format=%ct", "FETCH_HEAD"], cwd=HERE,
+                           capture_output=True, text=True, timeout=30)
+        return -600 <= time.time() - int(t.stdout.strip()) < PC_FRESH_SEC   # allows a PC clock a bit ahead
+    except (subprocess.TimeoutExpired, ValueError, OSError):
+        return False
 
 
 def refresh_account():
     """Mid-day: pick up a real trade that was logged after the watcher started
     (by Claude or by you), so the watcher starts managing it within ~5 minutes."""
-    if os.environ.get("GITHUB_ACTIONS"):
+    if SYNC:
         subprocess.run(["git", "pull", "-q", "--rebase", "--autostash"], cwd=HERE, capture_output=True)
     try:
         fresh = json.loads(CONFIG_PATH.read_text()).get("account", {})
@@ -3835,17 +3884,22 @@ def watch():
     if now.time() >= until:
         print("Watcher: market day is over.")
         return
+    if IN_ACTIONS and pc_active():
+        print("Watcher: the home PC server is running today's watch. GitHub stands by.")
+        return
     if not market_open_today(now.date()):
         print("Watcher: market isn't open (yet, or holiday). Exiting.")
         return
-    if os.environ.get("GITHUB_ACTIONS"):
+    if SYNC:
         subprocess.run(["git", "pull", "--rebase", "--autostash"], cwd=HERE, capture_output=True)
-    print(f"Watcher started {now:%H:%M:%S} New York; checking every {W['interval_sec']}s "
+    print(f"Watcher started {now:%H:%M:%S} New York on {HOST}; checking every {W['interval_sec']}s "
           f"(new signals every {W['scan_every_min']} min) until {W['until']}.")
+    mark_runner("watching")
     last_slot, last_save = None, time.time()
     # GitHub stops a job after 6 hours. Hand over before that: the runner queues a
     # fresh start every 30 minutes, and the next one carries on for the rest of the day.
-    deadline = time.time() + W["max_minutes"] * 60
+    # The home PC has no such limit.
+    deadline = time.time() + (24 * 60 if HOST == "pc" else W["max_minutes"]) * 60
     while ny_now().time() < until:
         if time.time() > deadline:
             git_save("Live watcher: handing over to the next run")
@@ -3857,6 +3911,17 @@ def watch():
         try:
             if slot != last_slot:
                 last_slot = slot
+                sup = os.environ.get("SPYBOT_SUPERVISOR_FILE")
+                if HOST == "pc" and sup and Path(sup).exists() and time.time() - Path(sup).stat().st_mtime > 12 * 60:
+                    mark_runner("stopped: home PC server not running")   # its heartbeat stopped too,
+                    git_save("Live watcher: PC server stopped")          # so GitHub takes over
+                    print(f"Watcher: the PC server stopped checking in; stopping at {now:%H:%M} so GitHub can take over.")
+                    return
+                if IN_ACTIONS and pc_active():   # the PC came online: hand the day to it
+                    mark_runner("handed over to the home PC")
+                    git_save("Live watcher: home PC took over")
+                    print(f"Watcher: home PC server took over at {now:%H:%M}. GitHub stands by.")
+                    return
                 refresh_account()            # a trade logged mid-day gets picked up here
                 alert()                      # full check: signals, close-out, status pages
             else:
@@ -3864,17 +3929,60 @@ def watch():
         except Exception as e:
             print(f"Watcher check failed at {now:%H:%M:%S}: {e}", file=sys.stderr)
         if time.time() - last_save > 1800:
+            mark_runner("watching")
             git_save()
             last_save = time.time()
         time.sleep(max(3, W["interval_sec"] - (time.time() - t0)))
+    mark_runner("finished for the day")
     git_save("Live watcher: end of day")
     print("Watcher finished for the day.")
 
 
+def publish_public(repo_dir):
+    """Home PC: write the public copy into a local clone of the public repo and push
+    it (GitHub's runner does the same in its own publish step)."""
+    import shutil
+    import tempfile
+    repo_dir = Path(repo_dir)
+    if not (repo_dir / ".git").exists():
+        print(f"Public copy skipped: {repo_dir} is not a clone of the public repo.")
+        return
+    run = lambda *c: subprocess.run(list(c), cwd=repo_dir, capture_output=True, text=True, timeout=180)
+    run("git", "pull", "-q", "--rebase", "--autostash")
+    tmp = Path(tempfile.mkdtemp()) / "public"
+    export_public(tmp)                               # refuses (raises) if anything personal shows up
+    shutil.rmtree(repo_dir / "spy-bot", ignore_errors=True)
+    shutil.copytree(tmp, repo_dir / "spy-bot")
+    shutil.rmtree(tmp.parent, ignore_errors=True)
+    readme = (repo_dir / "spy-bot" / "README.md").read_text(encoding="utf-8")
+    (repo_dir / "README.md").write_text(re.sub(r"\]\(([^h#][^)]*)\)", r"](spy-bot/\1)", readme), encoding="utf-8")
+    run("git", "add", "-A", "spy-bot", "README.md")
+    if run("git", "diff", "--cached", "--quiet").returncode != 0:
+        run("git", "-c", "user.name=runner", "-c", "user.email=runner@users.noreply.github.com",
+            "commit", "-q", "-m", f"Public copy {dt.date.today()}")
+        run("git", "pull", "-q", "--rebase")
+        r = run("git", "push", "-q")
+        print("Public copy updated." if r.returncode == 0 else f"Public copy push failed: {r.stderr.strip()[:200]}")
+    else:
+        print("Public copy unchanged.")
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
+    if (cmd in ("backtest", "alert") and IN_ACTIONS and os.environ.get("GITHUB_EVENT_NAME") == "schedule"
+            and pc_active()):
+        print(f"The home PC server is running and does the scheduled {cmd} itself. GitHub stands by.")
+        sys.exit(0)
     if cmd == "backtest":
+        mark_runner("monthly re-test")
         backtest()
+        mark_runner("re-test finished")
+    elif cmd == "save":
+        if len(sys.argv) > 3:
+            mark_runner(" ".join(sys.argv[3:]))
+        git_save(sys.argv[2] if len(sys.argv) > 2 else "Bot run")
+    elif cmd == "publish":
+        publish_public(sys.argv[2] if len(sys.argv) > 2 else HERE.parent / "spy-bot-runner")
     elif cmd == "alert":
         alert()
     elif cmd == "watch":
