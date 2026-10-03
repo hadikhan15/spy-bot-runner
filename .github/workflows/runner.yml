@@ -61,8 +61,10 @@ jobs:
           else
             CMD="${{ github.event.inputs.command || 'alert' }}"
           fi
-          mkdir -p logs
-          LOG="logs/$(date -u +%F)_${CMD}.log"
+          # write the log OUTSIDE the repo: the bot pulls fresh copies during the day,
+          # which would swap out a log file inside it. It's added to logs/ at the end.
+          LOG="$RUNNER_TEMP/bot.log"
+          echo "LOG_DEST=logs/$(date -u +%F)_${CMD}.log" >> "$GITHUB_ENV"
           echo "=== $(date -u) $CMD ===" >> "$LOG"
           if python spy_bot.py "$CMD" >> "$LOG" 2>&1; then
             echo "Run finished."
@@ -76,7 +78,11 @@ jobs:
         run: |
           git config user.name "spy-bot"
           git config user.email "spy-bot@users.noreply.github.com"
-          for f in predictions.csv predictions_intraday.csv paper_trades.csv state.json STATUS.md PAPER_JOURNAL.md config.json CHANGELOG.md charts reports logs; do
+          git pull -q --rebase --autostash > /dev/null 2>&1 || true
+          if [ -f "$RUNNER_TEMP/bot.log" ] && [ -n "$LOG_DEST" ]; then
+            mkdir -p logs && cat "$RUNNER_TEMP/bot.log" >> "$LOG_DEST"
+          fi
+          for f in predictions.csv predictions_intraday.csv paper_trades.csv state.json STATUS.md PAPER_JOURNAL.md config.json CHANGELOG.md charts reports logs option_quotes.csv; do
             if [ -e "$f" ]; then git add -A "$f"; fi
           done
           git diff --cached --quiet || git commit -q -m "Bot run $(date -u +%F)"
