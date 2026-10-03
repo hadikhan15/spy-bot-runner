@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="refresh" content="120">
+<title>SPY Bot Desk</title>
+<script>window.BOT_DATA = {"bot/summary": {"updated": "2026-10-03T15:52:05Z", "setup": {"members": ["simple", "levels", "flexible"], "ev_filter": false, "paper_bar": 0.08, "real_bar": 0.12, "exit": "runner", "stop": 40, "premium": [90, 110], "entries": ["10:30", "14:30"], "iv_source": "vix9d", "iv_scale": 1.0}, "paper": {"n": 1, "wins": 0, "total": -32.5, "avg": -32.5, "best": -32.5, "worst": -32.5}, "real": {"n": 0}, "earned": {"text": "not earned (paper P&L is $-32)", "allowed": 0, "n": 1, "need": 30, "problems": ["paper P&L is $-32"]}, "practice_until": "2026-10-09", "breaker": null, "last_signal": {"events": [], "breaker": null, "date": "2026-10-01", "p_up": 0.5533714254081231, "base": 0.5373729320310943, "edge": 0.015998493377028855, "kind": null, "decision": "Morning read: the model leans up for today (55% vs normal 54%). No trade at the open. The bot now watches today's data as it comes in and checks every 30 minutes from 10:30 to 14:30.", "spot": 761.75, "vix": 17.350000381469727}, "runner": null, "account": null, "weekly": [{"week": "2026-10-02", "trades": 1, "wins": 0, "pnl": -32.5}]}, "bot/paper": {"rows": [{"date": "2026-10-01", "time": "13:30", "kind": "put", "strike": 743.0, "expiration": "2026-10-08", "entry": 0.98, "exit": 0.655, "pnl": -32.5, "status": "closed", "reason": "close", "strength": 0.0912}]}, "bot/real": {"rows": []}, "bot/checks": {"rows": [{"date": "2026-09-30", "time": "12:10", "p": 0.4661, "base": 0.5419, "signal": "none", "price": 768.79}, {"date": "2026-09-30", "time": "12:15", "p": 0.5703, "base": 0.5419, "signal": "none", "price": 769.0}, {"date": "2026-09-30", "time": "12:20", "p": 0.4797, "base": 0.5419, "signal": "none", "price": 768.43}, {"date": "2026-09-30", "time": "12:25", "p": 0.4954, "base": 0.5419, "signal": "none", "price": 768.32}, {"date": "2026-09-30", "time": "12:30", "p": 0.511, "base": 0.5419, "signal": "none", "price": 767.97}, {"date": "2026-09-30", "time": "12:35", "p": 0.509, "base": 0.5419, "signal": "none", "price": 768.03}, {"date": "2026-09-30", "time": "12:40", "p": 0.5088, "base": 0.5419, "signal": "none", "price": 767.96}, {"date": "2026-09-30", "time": "12:45", "p": 0.4874, "base": 0.5419, "signal": "none", "price": 768.35}, {"date": "2026-09-30", "time": "12:50", "p": 0.5148, "base": 0.5419, "signal": "none", "price": 767.85}, {"date": "2026-09-30", "time": "12:55", "p": 0.5049, "base": 0.5419, "signal": "none", "price": 767.99}, {"date": "2026-09-30", "time": "13:00", "p": 0.5036, "base": 0.5419, "signal": "none", "price": 768.16}, {"date": "2026-09-30", "time": "13:05", "p": 0.4925, "base": 0.5419, "signal": "none", "price": 768.22}, {"date": "2026-09-30", "time": "13:10", "p": 0.4927, "base": 0.5419, "signal": "none", "price": 768.3}, {"date": "2026-09-30", "time": "13:15", "p": 0.5023, "base": 0.5419, "signal": "none", "price": 767.65}, {"date": "2026-09-30", "time": "13:20", "p": 0.4926, "base": 0.5419, "signal": "none", "price": 766.76}, {"date": "2026-09-30", "time": "13:25", "p": 0.4907, "base": 0.5419, "signal": "none", "price": 766.91}, {"date": "2026-09-30", "time": "13:30", "p": 0.4774, "base": 0.5419, "signal": "none", "price": 767.03}, {"date": "2026-09-30", "time": "13:35", "p": 0.4683, "base": 0.5419, "signal": "none", "price": 767.25}, {"date": "2026-09-30", "time": "13:40", "p": 0.4732, "base": 0.5419, "signal": "none", "price": 767.45}, {"date": "2026-09-30", "time": "13:45", "p": 0.473, "base": 0.5419, "signal": "none", "price": 767.42}, {"date": "2026-09-30", "time": "13:50", "p": 0.5005, "base": 0.5419, "signal": "none", "price": 767.89}, {"date": "2026-09-30", "time": "13:55", "p": 0.4898, "base": 0.5419, "signal": "none", "price": 767.68}, {"date": "2026-09-30", "time": "14:00", "p": 0.4908, "base": 0.5419, "signal": "none", "price": 767.64}, {"date": "2026-09-30", "time": "14:05", "p": 0.4723, "base": 0.5419, "signal": "none", "price": 767.27}, {"date": "2026-09-30", "time": "14:10", "p": 0.4726, "base": 0.5419, "signal": "none", "price": 767.16}, {"date": "2026-09-30", "time": "14:15", "p": 0.477, "base": 0.5419, "signal": "none", "price": 767.32}, {"date": "2026-09-30", "time": "14:20", "p": 0.4722, "base": 0.5419, "signal": "none", "price": 766.99}, {"date": "2026-09-30", "time": "14:25", "p": 0.4755, "base": 0.5419, "signal": "none", "price": 766.64}, {"date": "2026-10-01", "time": "10:40", "p": 0.5377, "base": 0.5391, "signal": "none", "price": 761.97}, {"date": "2026-10-01", "time": "10:45", "p": 0.5292, "base": 0.5391, "signal": "none", "price": 761.64}, {"date": "2026-10-01", "time": "10:50", "p": 0.5241, "base": 0.5391, "signal": "none", "price": 761.43}, {"date": "2026-10-01", "time": "10:55", "p": 0.5227, "base": 0.5391, "signal": "none", "price": 760.6}, {"date": "2026-10-01", "time": "11:00", "p": 0.522, "base": 0.5391, "signal": "none", "price": 760.51}, {"date": "2026-10-01", "time": "11:05", "p": 0.5045, "base": 0.5391, "signal": "none", "price": 759.8}, {"date": "2026-10-01", "time": "11:10", "p": 0.4974, "base": 0.5391, "signal": "none", "price": 759.17}, {"date": "2026-10-01", "time": "11:15", "p": 0.4937, "base": 0.5391, "signal": "none", "price": 760.04}, {"date": "2026-10-01", "time": "11:20", "p": 0.5138, "base": 0.5391, "signal": "none", "price": 760.91}, {"date": "2026-10-01", "time": "11:25", "p": 0.5123, "base": 0.5391, "signal": "none", "price": 760.71}, {"date": "2026-10-01", "time": "11:30", "p": 0.5122, "base": 0.5391, "signal": "none", "price": 760.39}, {"date": "2026-10-01", "time": "11:35", "p": 0.4922, "base": 0.5391, "signal": "none", "price": 759.54}, {"date": "2026-10-01", "time": "11:40", "p": 0.5128, "base": 0.5391, "signal": "none", "price": 760.68}, {"date": "2026-10-01", "time": "11:45", "p": 0.4915, "base": 0.5391, "signal": "none", "price": 759.64}, {"date": "2026-10-01", "time": "11:50", "p": 0.4871, "base": 0.5391, "signal": "none", "price": 759.9}, {"date": "2026-10-01", "time": "11:55", "p": 0.4972, "base": 0.5391, "signal": "none", "price": 759.81}, {"date": "2026-10-01", "time": "12:00", "p": 0.511, "base": 0.5391, "signal": "none", "price": 760.36}, {"date": "2026-10-01", "time": "12:05", "p": 0.5126, "base": 0.5391, "signal": "none", "price": 760.97}, {"date": "2026-10-01", "time": "12:10", "p": 0.5117, "base": 0.5391, "signal": "none", "price": 760.95}, {"date": "2026-10-01", "time": "12:15", "p": 0.5138, "base": 0.5391, "signal": "none", "price": 760.61}, {"date": "2026-10-01", "time": "12:20", "p": 0.5152, "base": 0.5391, "signal": "none", "price": 760.98}, {"date": "2026-10-01", "time": "12:25", "p": 0.5189, "base": 0.5391, "signal": "none", "price": 761.59}, {"date": "2026-10-01", "time": "12:30", "p": 0.52, "base": 0.5391, "signal": "none", "price": 761.38}, {"date": "2026-10-01", "time": "12:35", "p": 0.4893, "base": 0.5391, "signal": "none", "price": 762.31}, {"date": "2026-10-01", "time": "12:40", "p": 0.5324, "base": 0.5391, "signal": "none", "price": 761.91}, {"date": "2026-10-01", "time": "12:45", "p": 0.5313, "base": 0.5391, "signal": "none", "price": 761.99}, {"date": "2026-10-01", "time": "12:50", "p": 0.5334, "base": 0.5391, "signal": "none", "price": 761.79}, {"date": "2026-10-01", "time": "12:55", "p": 0.5119, "base": 0.5391, "signal": "none", "price": 760.8}, {"date": "2026-10-01", "time": "13:00", "p": 0.512, "base": 0.5391, "signal": "none", "price": 761.05}, {"date": "2026-10-01", "time": "13:05", "p": 0.5323, "base": 0.5391, "signal": "none", "price": 761.92}, {"date": "2026-10-01", "time": "13:10", "p": 0.5124, "base": 0.5391, "signal": "none", "price": 761.61}, {"date": "2026-10-01", "time": "13:15", "p": 0.5307, "base": 0.5391, "signal": "none", "price": 761.87}, {"date": "2026-10-01", "time": "13:20", "p": 0.4751, "base": 0.5391, "signal": "none", "price": 762.72}, {"date": "2026-10-01", "time": "13:25", "p": 0.4732, "base": 0.5391, "signal": "none", "price": 763.81}, {"date": "2026-10-01", "time": "13:30", "p": 0.4478, "base": 0.5391, "signal": "put", "price": 764.43}, {"date": "2026-10-02", "time": "14:19", "p": 0.5867, "base": 0.5388, "signal": "none", "price": 768.79}, {"date": "2026-10-02", "time": "14:20", "p": 0.5864, "base": 0.5388, "signal": "none", "price": 768.91}, {"date": "2026-10-02", "time": "14:25", "p": 0.5906, "base": 0.5388, "signal": "none", "price": 768.71}]}, "bot/changes": {"rows": [{"date": "2026-10-03", "auto": false, "text": "Dashboard on the home server instead of Claude. The PC (or Raspberry Pi) server builds the dashboard page from the repo every 5 minutes during market hours and after each job, and serves it on your home network at port 8765 (journals, today's readings, learning progress, backtest health and equity curve, specialists, changes). Uses no Claude usage."}, {"date": "2026-10-03", "auto": false, "text": "Home PC server. server/ runs the bot on the spare PC: the watcher from 9:20 AM to 3:50 PM (restarted with back-off if it crashes), saves and the public copy after the close, the monthly re-test on the 1st at 6:30 PM, and code updates pulled automatically. A 5-minute check-in (the pc-heartbeat branch) makes GitHub's scheduled runs stand by while the PC is healthy, and GitHub takes over if the PC goes quiet; a running GitHub watcher hands the day over within 5 minutes, and the PC waits 7 minutes after coming online before trading. The PC's watcher stops by itself if its server stops. Windows set"}, {"date": "2026-10-03", "auto": false, "text": "Review fixes. (1) Privacy: stricter public-copy guard: it refuses masked digits and any 9-12 digit number in every text file, the change log is exported as an allowlist of dated rows, and alert texts stay private. (2) EV filter learns from the exit style each trade would really get (exit bot, ladder), fails closed live (no EV model = no trade) and respects require_agreement. (3) Self-tuner compares an EV-filter setup only on days after its filter has learned (no free warm-up days). (4) Live inputs volume-vs-normal and noise-area now count finished hourly bars only, like the training data. (5) "}, {"date": "2026-10-03", "auto": false, "text": "Research-backed upgrade (lessons from Freqtrade, QuantConnect, NautilusTrader, L\u00f3pez de Prado, and intraday-momentum research). (1) EV filter (meta-labeling), off until proven: a second small model learns from the bot's own past signals which ones became winning *option* trades (after stops, the ladder, time decay and fees) and trades only when expected value is positive. (2) Harder self-tuner: Newey-West t-statistic \u2265 3.0 (was 2.5, too easy to pass by luck with ~35 candidates), plus Probability of Backtest Overfitting (CSCV; adoption refused at 50%+), Deflated Sharpe Ratio and a ledger of eve"}, {"date": "2026-10-03", "auto": false, "text": "Reality modeling (ideas from QuantConnect LEAN). (1) Fees: every simulated and paper trade now pays $0.10 per round trip (trade.fees_per_trade), matching your real Robinhood fills. (2) Real option quotes recorded: every 15 minutes during the watcher, near-the-money SPY option bids/asks for the expiration the bot would use go into option_quotes.csv (~45 KB/day), building our own history of real option prices. (3) Monthly pricing check: compares the backtest's estimated prices (Black-Scholes from VIX) to those real quotes and, after 500+ quotes from 5+ days, adopts the volatility scale (model.iv"}, {"date": "2026-10-03", "auto": false, "text": "Quant checks in every backtest (\"Skill or luck?\"), ideas from professional backtesters: (1) Monte Carlo permutation test, 2,000 random runs: random trades on the same days, and random call/put at the model's own entry times; skill only if both beat random >95% of the time. (2) Risk stats: Sharpe, Sortino, worst and longest drawdown, profit factor, average win/loss, plus a drawdown chart. (3) Which information helps: each input group scrambled to see how much accuracy it carries. Tested: on random-noise data it reported \"not clearly better than luck\" even with a Sharpe of 1.87; with a planted e"}, {"date": "2026-10-03", "auto": false, "text": "Smart-money specialist (smc) added, off until proven: market structure (confirmed swing highs/lows \u2192 higher-highs/higher-lows trend, break of structure, change of character, distance to the last swing high/low), fresh order blocks (last opposite candle before a strong move, untouched since; distance to the nearest one and whether price just tapped one and held), and sweeps of the first hour's range and the 20-day high/low, plus intraday structure from the hourly bars so far. Checked for look-ahead (200 random checks: features never change when later bars/days change). Self-tuner candidates add"}, {"date": "2026-10-02", "auto": true, "text": "Self-tuner adopted: committee \u2192 simple + levels + flexible. Backtest P&L $-1789 \u2192 $2168, better in both halves of the data."}, {"date": "2026-10-01", "auto": false, "text": "Reliable start times. GitHub's timer ran Sep 30's watcher 5 hours late and skipped Oct 1's morning starts. The runner now offers a watcher start every 30 minutes (9:07 AM\u20134:37 PM New York): the first one that fires starts the day, later ones wait in line and exit. The watcher also hands over to the next queued start after 5\u00bd hours, so GitHub's 6-hour job limit can't cut the day short."}, {"date": "2026-09-30", "auto": false, "text": "Real alerts are now earned by the paper record (trade.earn). 30+ closed paper trades with a healthy record (paper P&L > $0, last 20 not losing, strongest-signal trades not losing) \u2192 1 real alert/week for the strongest signals; stays at 1/week permanently (your call: better trades, not more trades). Pauses automatically if the record turns bad; you're notified of every change. Practice alerts continue until Oct 9. Trade review: each paper trade now records every specialist's opinion at entry; from 30 trades PAPER_JOURNAL.md shows who was right on the bot's own trades, and from 50 the self-tuner"}, {"date": "2026-09-30", "auto": false, "text": "Full team in charge (your choice). committee_members \u2192 [\"judge\"]: all five specialists (simple, levels, flexible, structure, trend) now train every day, each on its own inputs and time window (today's move \u00b7 day-trader levels \u00b7 20\u201360 days of support/resistance, fair value gaps and sweeps \u00b7 3\u201312 months of trend + elections), and the judge weighs their opinions to make every paper-trade decision. Real alerts stay off until the Oct 9 review. The monthly self-tuner still compares this against other setups and can switch only with clear, steady evidence."}, {"date": "2026-09-30", "auto": false, "text": "Trend model + elections + a stricter self-tuner. New committee member trend (off until proven): 3/6/12-month returns, 50/200-day average slopes, distance from the 52-week high/low, 3-month trend-line slope and fit, share of the last 3 months above the 200-day, plus US election inputs (election week, midterm year). events.json adds US election days 2006\u20132028. Self-tuner candidates now include trend combinations. Self-tuner luck check: a change must now also show a steady day-by-day edge (t-statistic \u2265 2.5) on top of the $ margin and both-halves rule. Tested on synthetic data: before, 3\u20135 random"}, {"date": "2026-09-30", "auto": false, "text": "Private data, public timer. This repo stays private. Scheduled runs moved to a separate public repo, spy-bot-runner (free unlimited minutes), which checks out this repo with a private key, runs the bot, and saves results back here. Bot output goes to logs/ here, never to the public run logs. This repo's workflow is now manual-only. Runner adds a monthly heartbeat so GitHub never pauses it."}, {"date": "2026-09-30", "auto": false, "text": "Live watcher. Replaces the 30-minute checks: one process runs ~10:20 AM\u20133:50 PM, checks open trades every 30 seconds (stop-move and sell alerts sent once each; paper trades close at their exact stop) and looks for new signals every 5 minutes; models train once per day and are reused. Saves to GitHub every 30 min. Account digits removed from the journal."}, {"date": "2026-09-30", "auto": false, "text": "Real alerts only for the strongest signals: paper trades at \u2265 8% confidence, real buy alerts only at \u2265 12% (trade.real_edge_threshold), max 1 per week. Practice alerts (notify.practice_alerts): while not approved, strong signals send the full alert labeled \"PRACTICE (don't trade)\". Backtest adds a \"Strongest signals only\" table (strong vs normal, and how many strong signals per week)."}, {"date": "2026-09-30", "auto": false, "text": "Judge (decision-maker) added. Learns, walk-forward, which models to trust in which situations from all four models' opinions plus market structure (sweeps, fair value gaps, support/resistance, crowded levels) and context (VWAP, opening range, VIX, time, gap, move so far), including interactions (e.g. each model \u00d7 sweep, \u00d7 VIX). Retrains daily; off until the self-tuner finds it beats the committee in both halves (candidates: judge, judge + simple, judge + simple + levels). Backtest committee table now includes the judge; all models are compared on the same days."}, {"date": "2026-09-30", "auto": false, "text": "Market structure model added as a 4th committee member (structure, off until proven): support/resistance (20/60-day highs/lows, $5 round numbers, crowded price zones), fair value gaps (nearest unfilled daily FVG above/below, inside a gap), and liquidity sweeps of yesterday's high/low. Self-tuner now tests committee variants that include it. Alerts describe the structure context."}, {"date": "2026-09-30", "auto": false, "text": "Charts. The paper journal now includes P&L over time, each recent trade, and P&L by entry hour; each backtest report includes model vs no-model P&L, P&L by entry time, and accuracy by confidence level. Charts are saved in charts/ and reports/charts/ and shown inline on GitHub. Added matplotlib to requirements. README front-page quick-links box."}, {"date": "2026-09-30", "auto": false, "text": "Self-tuner now also tests the helper bots working together: each pair (risk+mood, risk+exit, mood+exit) and all three at once, under the same rule (better by a real margin in both halves). The committee's models already learn from what the bots watch (VIX, opening gap, day range, VWAP), retrained daily."}, {"date": "2026-09-30", "auto": false, "text": "First self-tuner run on real data: current setup (simple + levels, runner, 8%) +$1,782 over 321 trades (+$5.55/trade, drawdown \u2212$511). Tested and rejected: risk bot (+$1,445), mood bot (+$1,231), exit bot (+$1,119), quick (+$1,093), balanced (+$855), simple alone (+$1,884, below the $267 margin), all 3 (+$1,302), bar 6% (+$1,750), bar 10% (+$1,098). Helper bots stay off; re-tested monthly. Fixed: the \"Exit styles compared\" table showed the same later-in-day number for every style (display only; the self-tuner's numbers were correct)."}, {"date": "2026-09-30", "auto": false, "text": "Self-improvement system. Helper bots added (all start off): risk (skip VIX > 30, gap > 1.5%, day range > 2%), mood (calls only above VWAP, puts only below), exit (runner when VIX < 20, quick when higher). Self-tuner runs with every backtest (incl. monthly): tests one change at a time (each bot, exit style, committee members, confidence bar \u00b12%) and adopts the best only if it beats the current setup by \u2265 $200/15% AND in both halves of the data; logs as and notifies. Live guard (daily): raises the confidence bar a step after a bad 20-trade paper run (< \u2212$300), lowers it back after recovery (> +$"}, {"date": "2026-09-30", "auto": false, "text": "Confirmation backtest (simple + levels committee, runner, 8%): later-in-day +$1,630 over 323 trades (+$5.05/trade), AUC 0.520, worst drawdown \u2212$544 (better than \u2212$712 with all 3), longest losing streak 8; no-model baseline \u2212$2,624. More confident predictions were right more often (54% at 8%+ vs 46\u201351% below). No settings changed. Next: collect live paper results."}, {"date": "2026-09-30", "auto": false, "text": "Backtest with committee + runner + 8%: later-in-day +$1,302 over 364 trades (+$3.58/trade) vs no-model baseline \u2212$2,627; positive at every entry time; runner best again. Members: simple +$1,884 (AUC 0.527), levels +$1,349 (0.515), flexible \u2212$1,024 (0.492, below coin flip in two reports). Committee changed to simple + levels (model.committee_members); flexible dropped. Agreement filter stays off (it reduced P&L to +$575)."}, {"date": "2026-09-30", "auto": false, "text": "Based on the 2026-09-30 backtest: exit style \u2192 runner (best in both morning and later-in-day columns; quick was ~breakeven); edge threshold 5% \u2192 8% (the 8%+ confidence group made +$697 while 5\u20138% lost \u2212$693). Added a committee of 3 models (simple, levels, flexible) that average their votes, with optional require_agreement; backtest compares each member vs the committee. Added an automatic monthly re-test (full backtest on the 1st, summary pushed to phone). Morning model stays read-only. Still paper-only (approved: false)."}, {"date": "2026-09-30", "auto": false, "text": "Contract picking kept as the original method by default (contract_picker: \"closest\": ~7-day expiration, closest-to-the-money option in $90\u2013$110). The multi-expiration scanner remains available as \"scanner\"."}, {"date": "2026-09-30", "auto": false, "text": "Contract scanner: at each signal the bot checks every liquid SPY option priced $90\u2013$110 across all expirations 2\u201314 days out and picks the best expected result (payoff your way vs against you capped by the stop, weighted by the model's probability, minus spread cost and time decay). Alerts explain the pick and show runners-up; paper trades record the expected value for later study."}, {"date": "2026-09-30", "auto": false, "text": "Morning run is now read-only (morning_entries: false): it logs its view and starts watching; trades (paper and real) come only from the 30-minute checks between 10:30 AM and 2:30 PM, using today's data as it comes in. Clarified: the \"buy a call every day\" comparison exists only in the backtest report, never in paper trades."}, {"date": "2026-09-30", "auto": false, "text": "First real backtest reviewed: morning model AUC 0.498 (no edge found yet, kept paper-trading); later-in-day model AUC 0.527 with +$11/trade before honest adjustments. Upgrades: exit styles (exit_profile: quick/balanced/runner, default quick) compared in the backtest; later-in-day model now sees opening range, yesterday's high/low, VWAP and relative volume; time decay added to intraday simulation; no-model baseline for later-in-day trades; logistic vs flexible (gbm) model comparison."}, {"date": "2026-09-29", "auto": false, "text": "Trades can be proposed any time from ~9:45 AM to 2:30 PM: a second (intraday) model checks every 30 min using hourly data. Paper trades record entry time and source (morning/intraday); up to 2 paper trades a day, one open at a time. Added circuit breaker (pause real suggestions after 3 losses in a row or account < $100), confidence check in the backtest, later-in-the-day entry backtest, and open vs ~1 hour later entry comparison. Status page scores intraday checks by time of day."}, {"date": "2026-09-29", "auto": false, "text": "Scheduled-event awareness: events.json with Fed decision, CPI and jobs report dates (2006\u20132026, from federalreserve.gov and bls.gov). Used as model inputs, broken out in the backtest, flagged in alerts, and skippable via trade.skip_events (off by default)."}, {"date": "2026-09-29", "auto": false, "text": "Day trades only: predicts close vs. open, checks every 30 min, sell-by-3:45 alert. Stop $40, option price $90\u2013$110, ~7-day expirations. Position-size cap raised to 80% of the account to fit one ~$100 option."}, {"date": "2026-09-29", "auto": false, "text": "Switched from $30 debit spreads to single options with a trailing-stop ladder."}, {"date": "2026-09-29", "auto": false, "text": "Model uses today's opening move (overnight SPY/VIX gap) plus yesterday's closes."}, {"date": "2026-09-29", "auto": false, "text": "Only important notifications; STATUS.md page; Friday recap."}, {"date": "2026-09-29", "auto": false, "text": "Bot created: SPY model, walk-forward backtest, paper trading, phone alerts via ntfy, GitHub Actions schedule."}]}, "bot/backtest": {"report": "backtest_2026-10-03.md", "period": "2024-07-29 to 2026-10-02", "selftest": "passed", "sharpe": 1.26, "sortino": 5.01, "max_dd": -421.0, "longest_dd": 128, "pf": 1.66, "model_pnl": 2810.0, "p_random": 0.0, "p_direction": 0.1, "verdict": "looks like skill", "late": "279 trades, $353 (vs $2810 on time). The edge survives delays.", "pbo": 75.0, "dsr": 81.0, "tuner": "no change cleared the bar", "pricing": "No real quotes recorded yet. The watcher records them every few minutes; the check starts once there are 500+ quotes from 5+ days.", "models": [{"name": "simple", "auc": 0.529, "trades": 256, "win": 42, "pnl": 2678.48, "in_use": true}, {"name": "levels", "auc": 0.521, "trades": 279, "win": 39, "pnl": 2111.07, "in_use": true}, {"name": "flexible", "auc": 0.498, "trades": 436, "win": 34, "pnl": -1158.46, "in_use": true}, {"name": "structure", "auc": 0.522, "trades": 393, "win": 40, "pnl": 1489.59, "in_use": false}, {"name": "trend", "auc": 0.54, "trades": 411, "win": 42, "pnl": 1825.3, "in_use": false}, {"name": "smc", "auc": 0.543, "trades": 438, "win": 40, "pnl": 2958.75, "in_use": false}, {"name": "momentum", "auc": 0.531, "trades": 272, "win": 42, "pnl": 2860.72, "in_use": false}, {"name": "judge", "auc": 0.504, "trades": 353, "win": 35, "pnl": -899.66, "in_use": false}], "info": [{"group": "today's move (simple)", "drop": 0.0785, "helps": "yes"}, {"group": "support/resistance + FVG", "drop": 0.0241, "helps": "yes"}, {"group": "smart money (structure, order blocks, sweeps)", "drop": 0.0167, "helps": "maybe"}, {"group": "intraday momentum + volatility regime", "drop": 0.0097, "helps": "maybe"}, {"group": "day-trader levels", "drop": 0.0051, "helps": "maybe"}, {"group": "months-long trend + elections", "drop": -0.0047, "helps": "no"}], "equity": [["2024-07-29", 0.7], ["2024-07-30", -39.4], ["2024-07-31", -79.5], ["2024-08-02", -110.33], ["2024-08-05", -150.43], ["2024-08-06", -190.53], ["2024-08-07", -16.2], ["2024-08-08", -56.3], ["2024-08-09", -96.4], ["2024-08-12", -92.54], ["2024-08-13", -132.64], ["2024-08-14", -149.5], ["2024-08-15", -164.66], ["2024-08-16", -192.86], ["2024-08-19", -232.96], ["2024-08-20", -234.28], ["2024-08-21", -250.12], ["2024-08-22", -160.7], ["2024-08-23", -160.8], ["2024-08-27", -177.86], ["2024-08-29", -117.85], ["2024-08-30", -157.95], ["2024-09-03", -67.34], ["2024-09-04", -53.75], ["2024-09-05", -7.18], ["2024-09-06", 44.65], ["2024-09-09", 49.72], ["2024-09-10", 49.62], ["2024-09-11", 336.16], ["2024-09-12", 296.06], ["2024-09-17", 297.17], ["2024-09-18", 257.07], ["2024-09-19", 256.72], ["2024-09-20", 234.12], ["2024-09-27", 194.02], ["2024-10-01", 153.92], ["2024-10-02", 138.04], ["2024-10-03", 120.61], ["2024-10-04", 80.51], ["2024-10-07", 132.46], ["2024-10-08", 92.36], ["2024-10-09", 52.26], ["2024-10-10", 40.63], ["2024-10-11", 34.78], ["2024-10-14", 12.88], ["2024-10-15", 70.52], ["2024-10-16", 40.59], ["2024-10-17", 58.79], ["2024-10-18", 33.04], ["2024-10-21", 32.94], ["2024-10-22", -7.16], ["2024-10-23", 47.7], ["2024-10-24", 34.57], ["2024-10-25", 123.76], ["2024-10-28", 138.73], ["2024-10-29", 115.12], ["2024-10-30", 138.88], ["2024-11-01", 186.2], ["2024-11-05", 152.35], ["2024-11-06", 112.25], ["2024-11-07", 72.15], ["2024-11-08", 78.13], ["2024-11-11", 66.02], ["2024-11-12", 25.92], ["2024-11-13", 25.82], ["2024-11-14", -14.28], ["2024-11-19", -32.09], ["2024-11-20", -72.19], ["2024-11-25", -62.28], ["2024-11-26", -29.86], ["2024-12-03", -11.54], ["2024-12-04", 19.49], ["2024-12-05", -5.28], ["2024-12-06", -14.98], ["2024-12-09", -44.63], ["2024-12-10", -84.73], ["2024-12-13", -81.45], ["2024-12-18", 841.42], ["2024-12-19", 855.25], ["2024-12-20", 815.15], ["2024-12-27", 829.25], ["2024-12-30", 883.68], ["2024-12-31", 843.58], ["2025-01-02", 803.48], ["2025-01-07", 763.38], ["2025-01-08", 763.28], ["2025-01-10", 723.18], ["2025-01-14", 732.58], ["2025-01-15", 733.03], ["2025-01-16", 715.18], ["2025-01-17", 714.97], ["2025-01-21", 755.15], ["2025-01-22", 739.61], ["2025-01-23", 816.27], ["2025-01-24", 819.38], ["2025-01-27", 804.36], ["2025-01-28", 772.41], ["2025-01-29", 772.31], ["2025-01-30", 772.21], ["2025-01-31", 732.11], ["2025-02-03", 732.01], ["2025-02-05", 782.65], ["2025-02-07", 755.13], ["2025-02-10", 746.29], ["2025-02-11", 755.09], ["2025-02-12", 782.01], ["2025-02-13", 851.05], ["2025-02-18", 863.6], ["2025-02-27", 863.5], ["2025-02-28", 863.4], ["2025-03-04", 913.53], ["2025-03-07", 915.78], ["2025-03-11", 915.68], ["2025-03-12", 875.58], ["2025-03-13", 835.48], ["2025-03-14", 913.31], ["2025-03-17", 934.74], ["2025-03-18", 921.39], ["2025-03-19", 945.55], ["2025-03-20", 905.45], ["2025-03-21", 963.24], ["2025-03-24", 965.83], ["2025-03-25", 950.24], ["2025-03-26", 910.14], ["2025-03-27", 870.04], ["2025-03-28", 829.94], ["2025-03-31", 982.44], ["2025-04-01", 1037.33], ["2025-04-02", 1037.23], ["2025-04-03", 997.13], ["2025-04-04", 957.03], ["2025-04-07", 916.93], ["2025-04-08", 1048.22], ["2025-04-09", 1008.12], ["2025-04-10", 1060.17], ["2025-04-11", 1153.47], ["2025-04-14", 1113.37], ["2025-04-15", 1087.6], ["2025-04-16", 1047.5], ["2025-04-17", 1047.4], ["2025-04-21", 1007.3], ["2025-04-22", 1007.2], ["2025-04-23", 967.1], ["2025-04-24", 1006.0], ["2025-04-25", 1069.39], ["2025-04-28", 1029.29], ["2025-04-29", 1071.1], ["2025-04-30", 1176.54], ["2025-05-01", 1136.44], ["2025-05-02", 1151.52], ["2025-05-05", 1139.11], ["2025-05-06", 1109.61], ["2025-05-07", 1109.51], ["2025-05-08", 1069.41], ["2025-05-23", 1029.31], ["2025-05-30", 989.21], ["2025-06-02", 1051.18], ["2025-06-03", 1075.65], ["2025-06-05", 1035.55], ["2025-06-06", 1035.08], ["2025-06-09", 1050.92], ["2025-06-13", 1046.97], ["2025-06-17", 1090.82], ["2025-06-18", 1125.9], ["2025-06-20", 1143.06], ["2025-06-25", 1148.19], ["2025-06-30", 1108.09], ["2025-07-02", 1072.92], ["2025-07-07", 1098.48], ["2025-07-15", 1142.89], ["2025-07-18", 1126.65], ["2025-07-28", 1131.95], ["2025-07-30", 1153.22], ["2025-07-31", 1153.12], ["2025-08-01", 1153.02], ["2025-08-05", 1170.13], ["2025-08-07", 1183.24], ["2025-08-11", 1143.14], ["2025-08-13", 1144.48], ["2025-08-20", 1128.05], ["2025-08-28", 1173.1], ["2025-09-02", 1173.0], ["2025-09-05", 1172.9], ["2025-09-15", 1161.52], ["2025-09-16", 1152.24], ["2025-09-17", 1152.14], ["2025-09-23", 1204.92], ["2025-10-03", 1216.83], ["2025-10-10", 1940.61], ["2025-10-13", 1900.51], ["2025-10-14", 1860.41], ["2025-10-15", 1913.61], ["2025-10-16", 1968.24], ["2025-10-17", 1940.2], ["2025-10-22", 1940.1], ["2025-10-27", 1904.89], ["2025-10-28", 1885.32], ["2025-10-29", 1899.64], ["2025-10-30", 1945.05], ["2025-10-31", 1944.95], ["2025-11-04", 2002.23], ["2025-11-06", 2053.99], ["2025-11-07", 2053.89], ["2025-11-11", 2024.83], ["2025-11-13", 2036.86], ["2025-11-18", 1996.76], ["2025-11-20", 2599.59], ["2025-11-24", 2596.79], ["2025-12-01", 2577.22], ["2025-12-02", 2565.69], ["2025-12-10", 2525.59], ["2025-12-12", 2525.49], ["2025-12-17", 2485.39], ["2025-12-18", 2485.29], ["2025-12-22", 2496.38], ["2025-12-23", 2542.96], ["2025-12-26", 2524.93], ["2025-12-29", 2514.34], ["2025-12-30", 2505.08], ["2026-01-28", 2510.61], ["2026-02-03", 2470.51], ["2026-02-04", 2430.41], ["2026-02-05", 2390.31], ["2026-02-06", 2441.03], ["2026-02-18", 2437.48], ["2026-02-19", 2422.66], ["2026-02-27", 2391.37], ["2026-03-02", 2407.2], ["2026-03-03", 2367.1], ["2026-03-05", 2367.0], ["2026-03-06", 2371.64], ["2026-03-10", 2436.83], ["2026-03-11", 2413.16], ["2026-03-12", 2421.27], ["2026-03-18", 2462.07], ["2026-03-23", 2465.24], ["2026-03-24", 2448.35], ["2026-03-25", 2448.7], ["2026-03-26", 2475.51], ["2026-03-27", 2539.09], ["2026-03-31", 2498.99], ["2026-04-01", 2527.37], ["2026-04-07", 2497.02], ["2026-04-08", 2481.05], ["2026-04-14", 2440.95], ["2026-04-15", 2400.85], ["2026-04-16", 2360.75], ["2026-04-21", 2447.98], ["2026-04-23", 2501.44], ["2026-04-27", 2478.73], ["2026-04-29", 2467.71], ["2026-05-01", 2495.81], ["2026-05-04", 2546.62], ["2026-05-06", 2516.64], ["2026-05-07", 2553.87], ["2026-05-08", 2537.24], ["2026-05-11", 2518.93], ["2026-05-12", 2491.92], ["2026-05-13", 2451.82], ["2026-05-14", 2411.72], ["2026-05-15", 2456.08], ["2026-05-18", 2488.08], ["2026-05-21", 2447.98], ["2026-06-05", 2692.92], ["2026-06-10", 2838.32], ["2026-06-11", 2798.22], ["2026-06-12", 2758.12], ["2026-06-18", 2763.15], ["2026-06-22", 2753.78], ["2026-07-10", 2772.3], ["2026-07-15", 2835.55], ["2026-07-24", 2835.45], ["2026-07-28", 2863.29], ["2026-07-29", 2823.19], ["2026-08-03", 2869.91], ["2026-08-04", 2829.81], ["2026-08-05", 2799.58], ["2026-08-06", 2759.48], ["2026-08-11", 2747.39], ["2026-08-14", 2749.38], ["2026-08-19", 2728.43], ["2026-08-21", 2732.87], ["2026-08-26", 2736.61], ["2026-08-27", 2746.85], ["2026-08-28", 2746.75], ["2026-08-31", 2773.73], ["2026-09-14", 2733.63], ["2026-09-16", 2793.66], ["2026-09-22", 2786.21], ["2026-09-23", 2761.01], ["2026-09-24", 2810.43]]}};</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a trading-desk cockpit. Summary strip on top, then live account,
+   today's readings, journals, learning and backtest health in a two-column grid
+   that stacks on phones. Numbers are monospaced; P&L sign is carried by +/− and
+   by blue (gain) / red (loss). */
+:root {
+  --bg: #f3f4f2;
+  --panel: #fcfcfb;
+  --ink: #0e1726;
+  --ink-2: #4b5363;
+  --ink-3: #7a8191;
+  --rule: #dfe2e6;
+  --rule-2: #eceef1;
+  --accent: #2a4fd6;
+  --accent-soft: #e6ebfc;
+  --gain: #2a78d6;
+  --loss: #d03b3b;
+  --good: #0c7a2c;
+  --good-soft: #e3f3e7;
+  --warn: #9a6200;
+  --warn-soft: #fbf0d9;
+  --bad: #b42f2f;
+  --bad-soft: #fbe6e6;
+  --neutral-soft: #eceef1;
+  --f-display: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d121b; --panel: #141b27; --ink: #eef1f6; --ink-2: #b4bccb; --ink-3: #8189a0;
+    --rule: #263042; --rule-2: #1c2433; --accent: #8aa2ff; --accent-soft: #1f2a4a;
+    --gain: #5a9df0; --loss: #ef6b6b; --good: #5fd07f; --good-soft: #15301f;
+    --warn: #f0b84a; --warn-soft: #34290f; --bad: #ff7b7b; --bad-soft: #3a1b1d; --neutral-soft: #1c2433;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d121b; --panel: #141b27; --ink: #eef1f6; --ink-2: #b4bccb; --ink-3: #8189a0;
+  --rule: #263042; --rule-2: #1c2433; --accent: #8aa2ff; --accent-soft: #1f2a4a;
+  --gain: #5a9df0; --loss: #ef6b6b; --good: #5fd07f; --good-soft: #15301f;
+  --warn: #f0b84a; --warn-soft: #34290f; --bad: #ff7b7b; --bad-soft: #3a1b1d; --neutral-soft: #1c2433;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 14px; line-height: 1.5; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; display: grid; gap: 18px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: 0.01em; }
+h1 { font-size: 30px; font-weight: 700; }
+h2 { font-size: 18px; font-weight: 600; }
+h3 { font-size: 14px; font-weight: 600; color: var(--ink-2); }
+.num, td.n, .mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--ink-3); }
+.small { font-size: 12.5px; }
+a { color: var(--accent); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; padding-bottom: 6px; border-bottom: 2px solid var(--ink); }
+.top .ticker { font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 999px; background: var(--neutral-soft); color: var(--ink-2); white-space: nowrap; }
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pill.good { background: var(--good-soft); color: var(--good); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.info { background: var(--accent-soft); color: var(--accent); }
+
+.strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+.tile { background: var(--panel); padding: 14px 16px; display: grid; gap: 2px; min-width: 0; }
+.tile .label { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); }
+.tile .big { font-family: var(--f-mono); font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.2; overflow-wrap: anywhere; }
+.tile .sub { font-size: 12.5px; color: var(--ink-2); }
+.gain { color: var(--gain); } .loss { color: var(--loss); }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.panel.wide { grid-column: 1 / -1; }
+.phead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+.phead .meta { font-size: 12px; color: var(--ink-3); }
+.kv { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px 16px; }
+.kv div { display: grid; gap: 1px; min-width: 0; }
+.kv dt { font-size: 11.5px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.06em; }
+.kv dd { margin: 0; font-family: var(--f-mono); font-variant-numeric: tabular-nums; font-size: 16px; font-weight: 500; overflow-wrap: anywhere; }
+.note { font-size: 13px; color: var(--ink-2); background: var(--rule-2); border-radius: 8px; padding: 10px 12px; }
+.note.warn { background: var(--warn-soft); color: var(--ink); }
+.note.bad { background: var(--bad-soft); color: var(--ink); }
+.empty { font-size: 13px; color: var(--ink-3); padding: 14px; border: 1px dashed var(--rule); border-radius: 8px; text-align: center; }
+
+.tablewrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-3); padding: 6px 8px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+td { padding: 7px 8px; border-bottom: 1px solid var(--rule-2); vertical-align: top; }
+td.n, th.n { text-align: right; white-space: nowrap; }
+tr.inuse td:first-child { font-weight: 600; }
+.tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); font-weight: 500; }
+.tag.auto { background: var(--warn-soft); color: var(--warn); }
+
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--rule); }
+.tabs button { font: inherit; font-weight: 500; font-size: 13px; background: none; border: 0; border-bottom: 2px solid transparent; padding: 6px 10px; color: var(--ink-2); cursor: pointer; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+
+.bar { height: 8px; background: var(--rule-2); border-radius: 999px; overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+
+.chart { position: relative; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart .axis { fill: var(--ink-3); font-family: var(--f-mono); font-size: 10.5px; }
+.chart .gridline { stroke: var(--rule-2); stroke-width: 1; }
+.chart .zero { stroke: var(--ink-3); stroke-width: 1; }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--panel); font-size: 12px; font-family: var(--f-mono); padding: 5px 8px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, calc(-100% - 10px)); opacity: 0; transition: opacity .1s; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--ink-2); }
+.legend i { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: 6px; background: var(--accent); }
+.legend i.dash { background: repeating-linear-gradient(90deg, var(--ink-3) 0 4px, transparent 4px 7px); }
+
+.changes { display: grid; gap: 10px; max-height: 420px; overflow-y: auto; padding-right: 4px; }
+.change { display: grid; grid-template-columns: 86px minmax(0, 1fr); gap: 10px; font-size: 13px; }
+.change .d { font-family: var(--f-mono); font-size: 12px; color: var(--ink-3); }
+.change p { margin: 0; color: var(--ink-2); }
+
+button.link { font: inherit; background: none; border: 0; color: var(--accent); cursor: pointer; padding: 0; text-decoration: underline; }
+footer { font-size: 12px; color: var(--ink-3); }
+
+@media (max-width: 820px) {
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="ticker">SPY · 7-day options · same-day trades</div>
+      <h1>SPY Bot Desk</h1>
+    </div>
+    <div class="pills" id="pills"><span class="pill">Loading bot data…</span></div>
+  </header>
+
+  <section class="strip" aria-label="Summary">
+
+    <div class="tile"><span class="label">Paper trades P&amp;L</span><span class="big" id="t-paper">—</span><span class="sub" id="t-paper-sub">The bot's practice trades</span></div>
+    <div class="tile"><span class="label">Real alerts</span><span class="big" id="t-earn">—</span><span class="sub" id="t-earn-sub">Earned by the paper record</span></div>
+  </section>
+
+  <div class="grid">
+
+
+    <section class="panel" aria-labelledby="today-h">
+      <div class="phead"><h2 id="today-h">Today's readings</h2><span class="meta" id="today-meta"></span></div>
+      <div id="today-chart" class="chart"></div>
+      <div class="legend" id="today-legend" hidden><span><i></i>Chance SPY closes higher than that moment</span><span><i class="dash"></i>Normal rate</span></div>
+      <div id="today-note"></div>
+    </section>
+
+    <section class="panel wide" aria-labelledby="j-h">
+      <div class="phead"><h2 id="j-h">Journals</h2><span class="meta">Paper trading only (practice trades)</span></div>
+      <div class="tabs" role="tablist">
+
+        <button role="tab" id="tab-paper" aria-selected="false" aria-controls="jp">Paper trades</button>
+      </div>
+
+      <div id="jp" role="tabpanel" aria-labelledby="tab-paper" class="tablewrap" hidden></div>
+    </section>
+
+    <section class="panel" aria-labelledby="learn-h">
+      <div class="phead"><h2 id="learn-h">Is it learning?</h2><span class="meta">Paper P&amp;L by week</span></div>
+      <div id="learn-chart" class="chart"></div>
+      <div id="earn-box"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="bt-h">
+      <div class="phead"><h2 id="bt-h">Backtest health</h2><span class="meta" id="bt-meta"></span></div>
+      <div id="bt-verdict"></div>
+      <dl class="kv" id="bt-kv"></dl>
+      <div id="bt-chart" class="chart"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="sp-h">
+      <div class="phead"><h2 id="sp-h">The specialists</h2><span class="meta">Backtest, later-in-day trades</span></div>
+      <div class="tablewrap" id="models"></div>
+      <h3>Which information helps</h3>
+      <div id="info"></div>
+    </section>
+
+    <section class="panel" aria-labelledby="ch-h">
+      <div class="phead"><h2 id="ch-h">Setup and changes</h2><span class="meta" id="setup-meta"></span></div>
+      <dl class="kv" id="setup"></dl>
+      <div class="changes" id="changes"></div>
+    </section>
+  </div>
+
+  <footer id="foot">Paper trading only. Updated after each trading day and each monthly re-test.</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  const $ = (id) => document.getElementById(id) || document.createElement("div");   // sections can be absent (public copy)
+  const S = { summary: null, paper: null, real: null, checks: null, changes: null, backtest: null };
+  const fmt$ = (v, sign) => {
+    if (v === null || v === undefined || isNaN(v)) return "—";
+    const s = Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return (v < 0 ? "−$" : (sign && v > 0 ? "+$" : "$")) + s;
+  };
+  const fmt0 = (v) => (Math.round(v) < 0 ? "−$" : "$") + Math.abs(Math.round(v)).toLocaleString("en-US");
+  const pct = (v, d = 0) => (v === null || v === undefined || isNaN(v)) ? "—" : (v * 100).toFixed(d) + "%";
+  const cls = (v) => v > 0 ? "gain" : v < 0 ? "loss" : "";
+  const esc = (t) => String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const el = (html) => { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content; };
+
+  // ---------- tiny SVG charts with a hover tooltip ----------
+  function lineChart(host, series, opts) {
+    // series: [{points:[[label, y]], dashed?:bool, cls?:string}]; one y scale
+    host.innerHTML = "";
+    const all = series.flatMap((s) => s.points.map((p) => p[1]));
+    if (!all.length) return;
+    const W = 560, H = opts.h || 200, L = 46, R = 12, T = 10, B = 24;
+    let lo = Math.min(...all, opts.min ?? Infinity), hi = Math.max(...all, opts.max ?? -Infinity);
+    if (hi === lo) { hi += 1; lo -= 1; }
+    const pad = (hi - lo) * 0.08; lo -= pad; hi += pad;
+    const n = series[0].points.length;
+    const x = (i) => L + (n <= 1 ? (W - L - R) / 2 : i * (W - L - R) / (n - 1));
+    const y = (v) => T + (hi - v) * (H - T - B) / (hi - lo);
+    const ticks = 4, parts = [];
+    for (let k = 0; k <= ticks; k++) {
+      const v = lo + (hi - lo) * k / ticks;
+      parts.push(`<line class="gridline" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/>`);
+      parts.push(`<text class="axis" x="${L - 6}" y="${y(v) + 3.5}" text-anchor="end">${esc(opts.yfmt(v))}</text>`);
+    }
+    if (opts.zero && lo < 0 && hi > 0) parts.push(`<line class="zero" x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}"/>`);
+    const labs = series[0].points.map((p) => p[0]);
+    const every = Math.max(1, Math.ceil(n / 5));
+    labs.forEach((lb, i) => { if (i % every === 0 || i === n - 1) parts.push(`<text class="axis" x="${x(i)}" y="${H - 6}" text-anchor="${i === 0 ? "start" : i === n - 1 ? "end" : "middle"}">${esc(opts.xfmt ? opts.xfmt(lb) : lb)}</text>`); });
+    series.forEach((s) => {
+      const d = s.points.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p[1]).toFixed(1)}`).join("");
+      if (s.area) parts.push(`<path d="${d}L${x(n - 1)},${y(Math.max(lo, 0))}L${x(0)},${y(Math.max(lo, 0))}Z" fill="var(--accent)" opacity="0.08"/>`);
+      parts.push(`<path d="${d}" fill="none" stroke="${s.dashed ? "var(--ink-3)" : "var(--accent)"}" stroke-width="2" ${s.dashed ? 'stroke-dasharray="4 3"' : ""} stroke-linejoin="round" stroke-linecap="round"/>`);
+      if (!s.dashed) { const last = s.points[n - 1]; parts.push(`<circle cx="${x(n - 1)}" cy="${y(last[1])}" r="4" fill="var(--accent)" stroke="var(--panel)" stroke-width="2"/>`); }
+    });
+    parts.push(`<line id="xh" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="var(--ink-3)" stroke-width="1" opacity="0"/>`);
+    parts.push(`<rect x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent"/>`);
+    host.appendChild(el(`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.label)}">${parts.join("")}</svg><div class="tip"></div>`));
+    const svg = host.querySelector("svg"), tip = host.querySelector(".tip"), xh = svg.querySelector("#xh");
+    const move = (ev) => {
+      const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) * W / r.width;
+      const i = Math.max(0, Math.min(n - 1, Math.round((px - L) / ((W - L - R) / Math.max(1, n - 1)))));
+      xh.setAttribute("x1", x(i)); xh.setAttribute("x2", x(i)); xh.setAttribute("opacity", "0.6");
+      tip.textContent = opts.tip(i);
+      tip.style.left = (x(i) * r.width / W) + "px"; tip.style.top = (y(series[0].points[i][1]) * r.height / H) + "px"; tip.style.opacity = 1;
+    };
+    svg.addEventListener("pointermove", move);
+    svg.addEventListener("pointerleave", () => { tip.style.opacity = 0; xh.setAttribute("opacity", "0"); });
+  }
+
+  function barChart(host, rows, opts) {
+    host.innerHTML = "";
+    if (!rows.length) return;
+    const W = 560, H = 180, L = 46, R = 12, T = 10, B = 24;
+    const vals = rows.map((r) => r[1]);
+    let lo = Math.min(0, ...vals), hi = Math.max(0, ...vals);
+    if (hi === lo) hi = 1;
+    const pad = (hi - lo) * 0.1; hi += hi > 0 ? pad : 0; lo -= lo < 0 ? pad : 0;
+    const y = (v) => T + (hi - v) * (H - T - B) / (hi - lo);
+    const slot = (W - L - R) / rows.length, bw = Math.min(42, slot * 0.6);
+    const parts = [];
+    for (let k = 0; k <= 4; k++) { const v = lo + (hi - lo) * k / 4; parts.push(`<line class="gridline" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="axis" x="${L - 6}" y="${y(v) + 3.5}" text-anchor="end">${esc(fmt0(v))}</text>`); }
+    parts.push(`<line class="zero" x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}"/>`);
+    rows.forEach((r, i) => {
+      const cx = L + slot * (i + 0.5), top = y(Math.max(r[1], 0)), h = Math.max(1, Math.abs(y(r[1]) - y(0)));
+      parts.push(`<rect data-i="${i}" x="${cx - bw / 2}" y="${top}" width="${bw}" height="${h}" rx="3" fill="${r[1] >= 0 ? "var(--gain)" : "var(--loss)"}"/>`);
+      parts.push(`<rect data-i="${i}" x="${cx - slot / 2}" y="${T}" width="${slot}" height="${H - T - B}" fill="transparent"/>`);
+      if (rows.length <= 8 || i === rows.length - 1) parts.push(`<text class="axis" x="${cx}" y="${H - 6}" text-anchor="middle">${esc(opts.xfmt(r[0]))}</text>`);
+    });
+    host.appendChild(el(`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.label)}">${parts.join("")}</svg><div class="tip"></div>`));
+    const svg = host.querySelector("svg"), tip = host.querySelector(".tip");
+    svg.querySelectorAll("rect[data-i]").forEach((rc) => rc.addEventListener("pointerenter", () => {
+      const i = +rc.dataset.i, r = svg.getBoundingClientRect(), cx = L + slot * (i + 0.5);
+      tip.textContent = opts.tip(i); tip.style.left = (cx * r.width / W) + "px"; tip.style.top = (y(Math.max(rows[i][1], 0)) * r.height / H) + "px"; tip.style.opacity = 1;
+    }));
+    svg.addEventListener("pointerleave", () => { tip.style.opacity = 0; });
+  }
+
+  // ---------- bot data ----------
+  function renderSummary() {
+    const s = S.summary; if (!s) return;
+    const pills = [];
+    const today = new Date().toISOString().slice(0, 10);
+    if (s.earned && s.earned.allowed) pills.push(`<span class="pill good">Real alerts on · ${s.earned.allowed}/week</span>`);
+    else if (s.practice_until && today <= s.practice_until) pills.push(`<span class="pill info">Practice alerts until ${esc(s.practice_until)}</span>`);
+    else pills.push(`<span class="pill">Paper trading only</span>`);
+    pills.push(s.breaker ? `<span class="pill bad">Circuit breaker: ${esc(s.breaker)}</span>` : `<span class="pill good">Circuit breaker OK</span>`);
+    if (s.setup && s.setup.ev_filter) pills.push(`<span class="pill info">EV filter on</span>`);
+    if (s.runner && s.runner.host) {
+      const where = s.runner.host === "pc" ? "Home PC" : s.runner.host === "github" ? "GitHub" : "This computer";
+      pills.push(`<span class="pill">Runs on ${where}: ${esc(s.runner.status || "")}</span>`);
+    }
+    pills.push(`<span class="pill">Bot data ${esc(new Date(s.updated).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}</span>`);
+    $("pills").innerHTML = pills.join("");
+    const r = s.real || {}, p = s.paper || {};
+    $("t-real").innerHTML = `<span class="${cls(r.total)}">${fmt$(r.total, true)}</span>`;
+    $("t-real-sub").textContent = r.n ? `${r.n} trades · ${r.wins} won · avg ${fmt$(r.avg, true)}` : "";
+    $("t-paper").innerHTML = `<span class="${cls(p.total)}">${fmt$(p.total, true)}</span>`;
+    $("t-paper-sub").textContent = p.n ? `${p.n} closed · ${p.wins} won · avg ${fmt$(p.avg, true)}` : "No closed paper trades yet";
+    const e = s.earned || {};
+    $("t-earn").textContent = e.allowed ? `${e.allowed} / week` : `${Math.min(e.n || 0, e.need || 30)} / ${e.need || 30}`;
+    $("t-earn-sub").textContent = e.allowed ? "Strongest signals only" : (e.problems && e.problems.length ? "Paper record must be winning" : "Closed paper trades needed");
+    // earn progress
+    const need = e.need || 30, have = Math.min(e.n || 0, need);
+    $("earn-box").innerHTML = `<h3>Progress toward real alerts</h3>
+      <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="${need}" aria-valuenow="${have}"><span style="width:${(have / need * 100).toFixed(1)}%"></span></div>
+      <p class="small" style="margin:6px 0 0">${esc((e.text || "").replace(/^./, (c) => c.toUpperCase()))}. Real alerts need ${need}+ closed paper trades, paper P&amp;L above $0, the last 20 not losing, and the strongest-signal trades not losing. Then at most 1 a week.</p>`;
+    // weekly
+    const wk = s.weekly || [];
+    if (wk.length) barChart($("learn-chart"), wk.map((w) => [w.week, w.pnl]), { label: "Paper P&L by week", xfmt: (d) => d.slice(5), tip: (i) => `Week to ${wk[i].week}: ${fmt$(wk[i].pnl, true)} · ${wk[i].trades} trades, ${wk[i].wins} won` });
+    else $("learn-chart").innerHTML = `<div class="empty">Weekly results appear here after the first closed paper trades.</div>`;
+    // setup
+    const st = s.setup || {};
+    $("setup").innerHTML = [
+      ["Deciding", (st.members || []).join(" + ") + (st.ev_filter ? " + EV filter" : "")],
+      ["Paper bar", pct(st.paper_bar)], ["Real alert bar", pct(st.real_bar)],
+      ["Exit style", st.exit], ["Stop", st.stop != null ? "$" + st.stop : "—"],
+      ["Option price", st.premium ? `$${st.premium[0]}–$${st.premium[1]}` : "—"],
+      ["Entries", st.entries ? `${st.entries[0]}–${st.entries[1]}` : "—"],
+      ["Option pricing", `${st.iv_source === "vix9d" ? "VIX9D" : "VIX"} × ${st.iv_scale ?? 1}`],
+    ].map(([k, v]) => `<div><dt>${esc(k)}</dt><dd style="font-size:14px">${esc(v)}</dd></div>`).join("");
+  }
+
+  function renderJournals() {
+    const real = (S.real && S.real.rows) || [];
+    $("jr").innerHTML = real.length ? `<table><thead><tr><th>Date</th><th>Contract</th><th class="n">Paid</th><th class="n">Sold</th><th class="n">P&amp;L</th><th>Notes</th></tr></thead><tbody>${
+      real.slice().reverse().map((r) => `<tr><td class="mono">${esc(r.date)}</td><td>${esc(r.contract)}</td><td class="n">${r.entry != null ? "$" + Number(r.entry).toFixed(2) : "—"}</td><td class="n">${r.exit != null ? "$" + Number(r.exit).toFixed(2) : "—"}</td><td class="n ${cls(r.pnl)}">${fmt$(r.pnl, true)}</td><td class="small muted">${esc(r.notes)}</td></tr>`).join("")}</tbody></table>`
+      : `<div class="empty"></div>`;
+    const paper = (S.paper && S.paper.rows) || [];
+    $("jp").innerHTML = paper.length ? `<table><thead><tr><th>Date</th><th>Time</th><th>Contract</th><th class="n">Strength</th><th class="n">Paid</th><th class="n">Exit</th><th class="n">P&amp;L</th><th>How it ended</th></tr></thead><tbody>${
+      paper.slice().reverse().map((r) => `<tr><td class="mono">${esc(r.date)}</td><td class="mono">${esc(r.time || "")}</td><td>SPY ${r.strike ?? ""} ${esc(r.kind)} · ${esc(r.expiration)}</td><td class="n">${pct(r.strength)}</td><td class="n">${r.entry != null ? "$" + r.entry.toFixed(2) : "—"}</td><td class="n">${r.exit != null ? "$" + r.exit.toFixed(2) : "—"}</td><td class="n ${cls(r.pnl)}">${r.status === "open" ? '<span class="tag">open</span>' : fmt$(r.pnl, true)}</td><td class="small muted">${esc(r.reason || "")}</td></tr>`).join("")}</tbody></table>`
+      : `<div class="empty">No paper trades yet. The bot opens one when a signal clears its bar between 10:30 and 2:30.</div>`;
+  }
+
+  function renderChecks() {
+    const rows = (S.checks && S.checks.rows) || [];
+    const s = S.summary;
+    if (!rows.length) { $("today-chart").innerHTML = `<div class="empty">The bot's readings appear here during market hours.</div>`; return; }
+    const last = rows[rows.length - 1].date;
+    const day = rows.filter((r) => r.date === last && r.p != null);
+    $("today-meta").textContent = `${last} · ${day.length} checks`;
+    lineChart($("today-chart"), [{ points: day.map((r) => [r.time, r.p]) }, { points: day.map((r) => [r.time, r.base]), dashed: true }],
+      { label: "Model reading through the day", yfmt: (v) => (v * 100).toFixed(1) + "%", tip: (i) => `${day[i].time} · SPY $${day[i].price} · ${(day[i].p * 100).toFixed(1)}% vs normal ${(day[i].base * 100).toFixed(1)}%${day[i].signal !== "none" ? " · " + day[i].signal.toUpperCase() : ""}` });
+    $("today-legend").hidden = false;
+    const sig = day.filter((r) => r.signal && r.signal !== "none");
+    const lastR = day[day.length - 1];
+    const edge = lastR ? lastR.p - lastR.base : 0;
+    const bar = s && s.setup ? s.setup.paper_bar : 0.08;
+    $("today-note").innerHTML = `<div class="note">${sig.length ? `<b>${sig.length} signal${sig.length > 1 ? "s" : ""}</b> on ${esc(last)}: first at ${esc(sig[0].time)} (${esc(sig[0].signal.toUpperCase())}).` : `No signal on ${esc(last)}.`}
+      Last reading ${esc(lastR.time)}: edge ${edge >= 0 ? "+" : "−"}${Math.abs(edge * 100).toFixed(1)}% vs a bar of ±${(bar * 100).toFixed(0)}%.</div>`;
+  }
+
+  function renderBacktest() {
+    const b = S.backtest; if (!b || !b.report) { $("bt-kv").innerHTML = ""; $("bt-verdict").innerHTML = `<div class="empty">Backtest results appear after the next monthly re-test.</div>`; return; }
+    $("bt-meta").textContent = `${b.report.replace("backtest_", "").replace(".md", "")} · ${b.period || ""}`;
+    const skill = (b.verdict || "").startsWith("looks like skill");
+    const okSelf = b.selftest === "passed";
+    $("bt-verdict").innerHTML = `<div class="pills">
+      <span class="pill ${skill ? "good" : "warn"}">${skill ? "Beats random: looks like skill" : "Not clearly better than luck"}</span>
+      ${b.selftest ? `<span class="pill ${okSelf ? "good" : "bad"}">Look-ahead self-test ${okSelf ? "passed" : "FAILED"}</span>` : ""}
+      ${b.pbo != null ? `<span class="pill ${b.pbo < 50 ? "good" : "warn"}">Overfitting risk ${b.pbo}%</span>` : ""}
+      <span class="pill">Tuner: ${esc(b.tuner || "—")}</span></div>`;
+    $("bt-kv").innerHTML = [
+      ["Simulated P&L", fmt$(b.model_pnl, true), cls(b.model_pnl)], ["Sharpe", b.sharpe ?? "—", ""],
+      ["Profit factor", b.pf ?? "—", ""], ["Worst drawdown", fmt$(b.max_dd, true), "loss"],
+      ["Random does as well", b.p_random != null ? b.p_random + "%" : "—", ""], ["Deflated Sharpe", b.dsr != null ? b.dsr + "%" : "—", ""],
+    ].map(([k, v, c]) => `<div><dt>${esc(k)}</dt><dd class="${c}">${esc(v)}</dd></div>`).join("") +
+      (b.late ? `<div style="grid-column:1/-1"><dt>If you act an hour late</dt><dd style="font-size:13px;font-family:var(--f-body)">${esc(b.late)}</dd></div>` : "");
+    const eq = b.equity || [];
+    if (eq.length > 2) lineChart($("bt-chart"), [{ points: eq, area: true }], { label: "Simulated equity curve", zero: true, yfmt: (v) => fmt0(v), xfmt: (d) => d.slice(2, 7), tip: (i) => `${eq[i][0]} · total ${fmt$(eq[i][1], true)}` });
+    else $("bt-chart").innerHTML = `<div class="small muted">The equity curve appears after the next backtest run.</div>`;
+    const ms = (b.models || []).slice().sort((a, c) => (c.pnl - a.pnl));
+    $("models").innerHTML = ms.length ? `<table><thead><tr><th>Specialist</th><th class="n">Accuracy (AUC)</th><th class="n">Trades</th><th class="n">Win rate</th><th class="n">P&amp;L</th></tr></thead><tbody>${
+      ms.map((m) => `<tr class="${m.in_use ? "inuse" : ""}"><td>${esc(m.name)} ${m.in_use ? '<span class="tag">in use</span>' : ""}</td><td class="n">${m.auc != null ? m.auc.toFixed(3) : "—"}</td><td class="n">${m.trades}</td><td class="n">${m.win}%</td><td class="n ${cls(m.pnl)}">${fmt$(m.pnl, true)}</td></tr>`).join("")}</tbody></table>
+      <p class="small muted" style="margin:6px 0 0">AUC 0.50 is a coin flip. Above about 0.53 is a usable edge on this data.</p>` : `<div class="empty">No specialist results yet.</div>`;
+    const info = b.info || [];
+    const mx = Math.max(0.0001, ...info.map((r) => Math.abs(r.drop)));
+    $("info").innerHTML = info.length ? info.map((r) => `<div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) 52px;gap:8px;align-items:center;font-size:12.5px;margin:4px 0">
+        <span>${esc(r.group)}</span><span class="bar"><span style="width:${Math.max(2, Math.abs(r.drop) / mx * 100).toFixed(0)}%;background:${r.drop > 0 ? "var(--accent)" : "var(--ink-3)"}"></span></span>
+        <span class="mono small" style="text-align:right">${r.helps}</span></div>`).join("") : `<div class="small muted">Appears after the next backtest.</div>`;
+  }
+
+  function renderChanges() {
+    const rows = (S.changes && S.changes.rows) || [];
+    $("changes").innerHTML = rows.length ? rows.slice(0, 25).map((r) => `<div class="change"><span class="d">${esc(r.date)}</span><p>${r.auto ? '<span class="tag auto">bot</span> ' : ""}${esc(r.text.length > 320 ? r.text.slice(0, 317) + "…" : r.text)}</p></div>`).join("") : `<div class="empty">No changes recorded yet.</div>`;
+    const autos = rows.filter((r) => r.auto).length;
+    $("setup-meta").textContent = `${rows.length} changes · ${autos} made by the bot itself`;
+  }
+
+  const render = { summary: () => { renderSummary(); renderChecks(); }, paper: renderJournals, real: renderJournals, checks: renderChecks, changes: renderChanges, backtest: renderBacktest };
+
+  // tabs
+  function selectTab(which) {
+    const real = which === "real";
+    $("tab-real").setAttribute("aria-selected", real); $("tab-paper").setAttribute("aria-selected", !real);
+    $("jr").hidden = !real; $("jp").hidden = real;
+    try { localStorage.setItem("desk-tab", which); } catch (e) {}
+  }
+  $("tab-real").addEventListener("click", () => selectTab("real"));
+  $("tab-paper").addEventListener("click", () => selectTab("paper"));
+  try { if (localStorage.getItem("desk-tab") === "paper") selectTab("paper"); } catch (e) {}
+  if (!document.getElementById("tab-real")) selectTab("paper");
+  renderJournals(); renderChecks(); renderBacktest(); renderChanges();
+  $("learn-chart").innerHTML = `<div class="empty">Loading…</div>`;
+
+  const D = window.BOT_DATA || {};
+  for (const name of Object.keys(S)) { S[name] = D["bot/" + name] || null; render[name](); }
+  if (!D["bot/summary"]) $("pills").innerHTML = `<span class="pill warn">No bot data yet</span>`;
+
+  
+})();
+</script>
+
+</body>
+</html>

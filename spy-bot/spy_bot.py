@@ -3652,7 +3652,8 @@ def dashboard_data():
         "breaker": breaker_status(),
         "last_signal": state.get("last_signal"),
         "runner": runner,
-        "weekly":sorted(weekly.values(), key=lambda w: w["week"]),
+        "account": {"value": num(ACCT.get("value")), "start": 150.0, "open_position": ACCT.get("open_position")},
+        "weekly": sorted(weekly.values(), key=lambda w: w["week"]),
     }
     bt = {"report": None}
     reps = sorted(OUT.glob("backtest_2*.md"))
@@ -3735,6 +3736,29 @@ PRIVATE_PATTERN = re.compile("•{2,}" + r"\s*\d|(?<![\d.,$])\d{9,12}(?![\d.,])"
 CHANGELOG_ROW = re.compile(r"^\| \d{4}-\d{2}-\d{2} \| .* \|$")
 
 
+PUBLIC_PAGE_TEXT = [("Real and paper are kept separate", "Paper trading only (practice trades)"),
+                    ("No real trades logged yet", ""),
+                    ("No real trades yet. Trades you make in Robinhood are logged automatically at 4:20 PM on weekdays.", ""),
+                    ("Served by the home PC. The page reloads every 2 minutes; the bot updates its data every few "
+                     "minutes during market hours.", "Paper trading only. Updated after each trading day and each monthly re-test.")]
+
+
+def dashboard_page(public=False):
+    """The dashboard as one HTML page with the bot's data inside. public=True leaves out
+    real trades, the account and anything personal (for the public repo's website)."""
+    tpl = (HERE / "server" / "dashboard_template.html").read_text(encoding="utf-8")
+    data = dashboard_data()
+    if public:
+        tpl = re.sub(r"(<!--PRIVATE-->|/\*PRIVATE\*/).*?(<!--/PRIVATE-->|/\*/PRIVATE\*/)", "", tpl, flags=re.S)
+        for a, b in PUBLIC_PAGE_TEXT:
+            tpl = tpl.replace(a, b)
+        data["bot/summary"].update(real={"n": 0}, account=None)
+        data["bot/real"] = {"rows": []}
+        data["bot/changes"]["rows"] = [r for r in data["bot/changes"]["rows"] if not PRIVATE_WORDS.search(r["text"])]
+    blob = json.dumps(data, default=str, allow_nan=False).replace("</", "<\\/")
+    return tpl.replace("<!--BOT_DATA-->", f"<script>window.BOT_DATA = {blob};</script>")
+
+
 def _private_hits(text):
     return [m.group(0) for m in PRIVATE_PATTERN.finditer(text)]
 
@@ -3784,13 +3808,19 @@ def export_public(dest):
         f"| Paper P&L (1 contract each) | ${pnl.sum():+.2f} |" if len(done) else "| Paper P&L | - |",
         f"| Models in charge | {' + '.join(committee_names())}{' + EV filter' if MODEL.get('meta_filter') else ''} |",
         f"| Latest backtest | [{reports[-1].name}](reports/{reports[-1].name}) |" if reports else "| Latest backtest | - |",
-        "", "- **[PAPER_JOURNAL.md](PAPER_JOURNAL.md)**: every paper trade, with charts",
+        "", "- **[Dashboard](https://hadikhan15.github.io/spy-bot-runner/spy-bot/)**: paper trades, readings, "
+        "learning and backtest health",
+        "- **[PAPER_JOURNAL.md](PAPER_JOURNAL.md)**: every paper trade, with charts",
         "- **[CHANGELOG.md](CHANGELOG.md)**: every change, including the ones the bot made itself",
         "- **[reports/](reports/)**: monthly backtests with the skill-or-luck checks",
         "- **[spy_bot.py](spy_bot.py)**: the whole bot", "",
         "Not financial advice. Simulated results use estimated option prices and can differ from real fills.",
     ]
     (dest / "README.md").write_text("\n".join(readme) + "\n", encoding="utf-8")
+    try:                                              # the paper-trading dashboard (GitHub Pages)
+        (dest / "index.html").write_text(dashboard_page(public=True), encoding="utf-8")
+    except Exception as e:
+        print(f"Public dashboard skipped: {e}", file=sys.stderr)
     leaks = {}                                        # last line of defense: scan every text file
     for f in dest.rglob("*"):
         if f.is_file() and f.suffix.lower() not in (".png", ".jpg", ".jpeg", ".gif", ".svg"):
@@ -3880,6 +3910,7 @@ def watch():
     W = {"interval_sec": 30, "scan_every_min": 5, "until": "15:50", "max_minutes": 330,
          **CFG.get("watcher", {})}
     until = dt.time.fromisoformat(W["until"])
+    t_start = time.time()                            # GitHub's 6-hour limit counts from here
     now = ny_now()
     if now.time() >= until:
         print("Watcher: market day is over.")
@@ -3887,6 +3918,17 @@ def watch():
     if IN_ACTIONS and pc_active():
         print("Watcher: the home PC server is running today's watch. GitHub stands by.")
         return
+    # An early start (GitHub's quiet pre-dawn timer, which runs on time far more reliably than
+    # its busy daytime one) waits here for the open, so the watcher is already live at 9:31.
+    if now.weekday() < 5 and now.time() < dt.time(9, 31):
+        print(f"Watcher: started early ({now:%H:%M}); waiting for the open.")
+        while ny_now().time() < dt.time(9, 31):
+            if IN_ACTIONS and pc_active():
+                print("Watcher: the home PC server came online. GitHub stands by.")
+                return
+            left = (dt.datetime.combine(ny_now().date(), dt.time(9, 31)) - ny_now().replace(tzinfo=None)).total_seconds()
+            time.sleep(max(5, min(300, left)))
+        now = ny_now()
     if not market_open_today(now.date()):
         print("Watcher: market isn't open (yet, or holiday). Exiting.")
         return
@@ -3899,7 +3941,7 @@ def watch():
     # GitHub stops a job after 6 hours. Hand over before that: the runner queues a
     # fresh start every 30 minutes, and the next one carries on for the rest of the day.
     # The home PC has no such limit.
-    deadline = time.time() + (24 * 60 if HOST == "pc" else W["max_minutes"]) * 60
+    deadline = t_start + (24 * 60 if HOST == "pc" else W["max_minutes"]) * 60
     while ny_now().time() < until:
         if time.time() > deadline:
             git_save("Live watcher: handing over to the next run")
@@ -3991,6 +4033,13 @@ if __name__ == "__main__":
         out_ = Path(sys.argv[2] if len(sys.argv) > 2 else "dashboard_data.json")
         out_.write_text(json.dumps(dashboard_data(), default=str, allow_nan=False), encoding="utf-8")
         print(f"Dashboard data written to {out_}")
+    elif cmd == "dashboard-html":                   # the home server shows this page on your network
+        out_ = Path(sys.argv[2] if len(sys.argv) > 2 else HERE / "dashboard.html")
+        out_.parent.mkdir(parents=True, exist_ok=True)
+        tmp_ = out_.with_suffix(".tmp")
+        tmp_.write_text(dashboard_page(), encoding="utf-8")
+        os.replace(tmp_, out_)
+        print(f"Dashboard page written to {out_}")
     elif cmd == "export-public":
         export_public(sys.argv[2] if len(sys.argv) > 2 else "public_copy")
     elif cmd == "selftest":
