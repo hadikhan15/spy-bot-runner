@@ -482,6 +482,12 @@ def smc_features(d, now, day_hi, day_lo, bars, cap=0.05):
 # Intraday momentum (the best-replicated intraday effect: the day-so-far move
 # predicts the rest of the day, mostly on volatile/stressed days).
 MOMO_FEATURES = ["move_z", "noise_pos"]
+# ICT / day-trader-Twitter ideas turned into exact, testable inputs: the overnight high/low
+# (after-hours + pre-market) and whether it was swept, SPY vs QQQ divergence at yesterday's
+# high/low ("SMT"), where price sits in the past week's range (premium/discount) and the
+# 10-11 AM / 2-3 PM "killzone" windows. Off until the self-tuner proves it.
+ICT_FEATURES = ["on_hi_dist", "on_lo_dist", "on_sweep_hi", "on_sweep_lo", "smt_hi", "smt_lo", "wk_pos",
+                "kz_am", "kz_pm"]
 
 
 # The committee: three models that each see the day a little differently and vote.
@@ -493,6 +499,7 @@ COMMITTEE = {
     "trend": ("logistic", INTRA_FEATURES + TREND_FEATURES + ELECTION_FEATURES),  # + months-long trend, elections
     "smc": ("logistic", INTRA_FEATURES + ["sweep"] + SMC_FEATURES),  # + market structure, order blocks, sweeps
     "momentum": ("logistic", INTRA_BASE + MOMO_FEATURES + REGIME_DAILY + ["or_pos", "vwap_dist"]),  # momentum × regime
+    "ict": ("logistic", INTRA_FEATURES + ICT_FEATURES),  # + overnight sweeps, SMT divergence, killzones
 }
 
 
@@ -633,8 +640,59 @@ def committee_vote(probs, base):
     return p, len(sides) == 1
 
 
+_EXT = {}            # extra hourly data for the ICT inputs: {"qqq": QQQ bars, "ovn": SPY extended-hours bars}
+
+
+def _load_ext():
+    for key, sym, pre in (("qqq", "QQQ", False), ("ovn", "SPY", True)):
+        try:
+            h = yf.Ticker(sym).history(period="730d", interval="1h", prepost=pre)
+            if not h.empty:
+                h.index = h.index.tz_convert("America/New_York")
+                if pre:                               # keep only bars outside regular hours
+                    t = h.index.time
+                    h = h[(t < dt.time(9, 30)) | (t >= dt.time(16, 0))]
+            _EXT[key] = h
+        except Exception as e:
+            print(f"Extra data {sym} unavailable: {e}", file=sys.stderr)
+            _EXT[key] = pd.DataFrame()
+
+
+def overnight_range(ovn, prev_day, day):
+    """High/low from the previous session's close (4 PM) to this morning's pre-market,
+    using only bars that finish before 9:30."""
+    if ovn is None or len(ovn) == 0 or prev_day is None:
+        return None
+    a = pd.Timestamp(prev_day).tz_localize("America/New_York") + pd.Timedelta(hours=16)
+    b = pd.Timestamp(day).tz_localize("America/New_York") + pd.Timedelta(hours=8, minutes=30)
+    w = ovn[(ovn.index >= a) & (ovn.index <= b)]
+    return (float(w["High"].max()), float(w["Low"].min())) if len(w) else None
+
+
+def ict_features(t_check, now, hi_so_far, lo_so_far, prev_hi, prev_lo, wk_hi, wk_lo,
+                 on_rng=None, q_bars=None, q_prev=None):
+    f = {c: 0.0 for c in ICT_FEATURES}
+    f["wk_pos"] = 0.5
+    f["kz_am"] = float(dt.time(10) <= t_check < dt.time(11))
+    f["kz_pm"] = float(dt.time(14) <= t_check < dt.time(15))
+    hi5, lo5 = max(wk_hi, hi_so_far), min(wk_lo, lo_so_far)
+    if hi5 > lo5:
+        f["wk_pos"] = float(np.clip((now - lo5) / (hi5 - lo5), 0, 1))
+    if on_rng and on_rng[0] > 0 and on_rng[1] > 0:
+        oh, ol = on_rng
+        f["on_hi_dist"], f["on_lo_dist"] = now / oh - 1, now / ol - 1
+        f["on_sweep_hi"] = float(hi_so_far > oh and now < oh)     # took the overnight high, back below
+        f["on_sweep_lo"] = float(lo_so_far < ol and now > ol)
+    if q_bars is not None and len(q_bars) and q_prev:
+        qh, ql = float(q_bars["High"].max()), float(q_bars["Low"].min())
+        f["smt_hi"] = float(hi_so_far > prev_hi) - float(qh > q_prev[0])   # one took yesterday's high, the other didn't
+        f["smt_lo"] = float(lo_so_far < prev_lo) - float(ql < q_prev[1])
+    return f
+
+
 def load_hourly():
     """Hourly SPY/VIX bars for about the last 2 years (Yahoo's limit)."""
+    _load_ext()
     spy = yf.Ticker("SPY").history(period="730d", interval="1h")
     if spy.empty:
         raise RuntimeError("Could not download hourly SPY data.")
@@ -670,10 +728,13 @@ def intraday_features(ctx, day_open, hi, lo, now, hours_in, vix_open, vix_now, e
     return row
 
 
-def build_intraday(daily, spy_h, vix_h):
+def build_intraday(daily, spy_h, vix_h, ext=None):
     """One row per (day, hourly checkpoint): known info at that moment, and
     whether SPY closed that day above the price at that moment."""
     dmap = {d.date(): i for i, d in enumerate(daily.index)}
+    ext = _EXT if ext is None else ext
+    ovn, qqq = ext.get("ovn"), ext.get("qqq")
+    q_days = {d: g_ for d, g_ in qqq.groupby(qqq.index.date)} if qqq is not None and len(qqq) else {}
     vix_days = {d: g for d, g in vix_h.groupby(vix_h.index.date)} if not vix_h.empty else {}
     rows, day_bars = [], {}
     last_entry = dt.time.fromisoformat(TRADE.get("last_entry_time", "14:30"))
@@ -686,6 +747,8 @@ def build_intraday(daily, spy_h, vix_h):
         prior = daily.iloc[max(0, dmap[day] - 60):dmap[day]]
         fvgs = daily_fvgs(prior)
         smc_d = smc_daily(prior)
+        wk5 = prior.tail(5)
+        on_rng = overnight_range(ovn, yday.name.date(), day)
         o, close = float(g["Open"].iloc[0]), float(g["Close"].iloc[-1])
         vg = vix_days.get(day)
         v_open = float(vg["Open"].iloc[0]) if vg is not None and len(vg) else float(ctx["vix_open"])
@@ -706,6 +769,11 @@ def build_intraday(daily, spy_h, vix_h):
                                           float(g["Low"].iloc[:k].min())))
             row.update(smc_features(smc_d, now, float(g["High"].iloc[:k].max()),
                                     float(g["Low"].iloc[:k].min()), g.iloc[:k]))
+            qd, qp = q_days.get(day), q_days.get(yday.name.date())
+            row.update(ict_features(ts.time(), now, float(g["High"].iloc[:k].max()), float(g["Low"].iloc[:k].min()),
+                                    float(yday["high"]), float(yday["low"]), float(wk5["high"].max()),
+                                    float(wk5["low"].min()), on_rng, qd[qd.index < ts] if qd is not None else None,
+                                    (float(qp["High"].max()), float(qp["Low"].min())) if qp is not None else None))
             row.update(day=day, time=ts.strftime("%H:%M"), k=k, price=now, vix_now=v_now,
                        target=float(close > now))
             rows.append(row)
@@ -723,7 +791,7 @@ def build_intraday(daily, spy_h, vix_h):
     X["noise_ref"] = X.groupby("k")["abs_move"].transform(lambda v: v.shift(1).rolling(14, min_periods=5).mean())
     X["noise_pos"] = (X["intr_ret"] / X["noise_ref"]).replace([np.inf, -np.inf], np.nan).fillna(0.0).clip(-5, 5)
     X = X.replace([np.inf, -np.inf], np.nan).dropna(subset=INTRA_FEATURES + STRUCT_FEATURES)
-    for c_ in TREND_FEATURES + ELECTION_FEATURES + SMC_FEATURES + MOMO_FEATURES:   # never drop rows
+    for c_ in TREND_FEATURES + ELECTION_FEATURES + SMC_FEATURES + MOMO_FEATURES + ICT_FEATURES:   # never drop rows
         X[c_] = X[c_].fillna(0.0) if c_ in X else 0.0
     for c_, v_ in REGIME_NEUTRAL.items():
         X[c_] = X[c_].fillna(v_) if c_ in X else v_
@@ -962,6 +1030,7 @@ FEATURE_GROUPS = {
     "months-long trend + elections": TREND_FEATURES + ELECTION_FEATURES,
     "smart money (structure, order blocks, sweeps)": SMC_FEATURES,
     "intraday momentum + volatility regime": MOMO_FEATURES + REGIME_DAILY,
+    "ICT (overnight sweeps, SMT divergence, killzones, weekly premium/discount)": ICT_FEATURES,
 }
 
 
@@ -1138,8 +1207,20 @@ def selftest(n_checks=40, seed=11):
     spy_h = pd.DataFrame(rows, columns=["ts", "Open", "High", "Low", "Close", "Volume"]).set_index("ts")
     vix_h = spy_h.copy()
     vix_h[["Open", "High", "Low", "Close"]] = 18.0
+    q_h = spy_h.copy()                                   # made-up QQQ: SPY with its own noise
+    q_h[["Open", "High", "Low", "Close"]] *= 1.3 * rng.uniform(0.995, 1.005, (len(q_h), 1))
+    q_h["High"] = q_h[["Open", "High", "Close"]].max(axis=1)
+    q_h["Low"] = q_h[["Open", "Low", "Close"]].min(axis=1)
+    orows = []                                           # made-up after-hours and pre-market bars
+    for d in idx[-161:]:
+        base_ = float(raw.loc[d, "close"])
+        for hh in (4, 5, 6, 7, 8, 16, 17, 18, 19):
+            ts = pd.Timestamp(d.date()).tz_localize("America/New_York") + pd.Timedelta(hours=hh)
+            x_ = base_ * (1 + rng.normal(0, 0.003))
+            orows.append((ts, x_, x_ * 1.001, x_ * 0.999, x_, 1e4))
+    ovn_h = pd.DataFrame(orows, columns=["ts", "Open", "High", "Low", "Close", "Volume"]).set_index("ts")
     df_full = build_features(raw)
-    X_full, _ = build_intraday(df_full, spy_h, vix_h)
+    X_full, _ = build_intraday(df_full, spy_h, vix_h, {"qqq": q_h, "ovn": ovn_h})
     feats = [f for f in dict.fromkeys(sum([f for _, f in COMMITTEE.values()], [])) if f in X_full]
     bad = set()
     days = sorted(X_full["day"].unique())
@@ -1159,7 +1240,11 @@ def selftest(n_checks=40, seed=11):
         sh.loc[later, "Volume"] *= rng.uniform(0.5, 2.0, int(later.sum()))
         vh = vix_h[vix_h.index.date <= d].copy()
         vh.loc[vh.index >= cut_ts, ["High", "Low", "Close"]] *= 1.3
-        Xt_, _ = build_intraday(df_t, sh, vh)
+        qh = q_h[q_h.index.date <= d].copy()
+        qh.loc[qh.index >= cut_ts, ["Open", "High", "Low", "Close"]] *= rng.uniform(0.9, 1.1)
+        oh_ = ovn_h[ovn_h.index.date <= d].copy()
+        oh_.loc[oh_.index >= cut_ts, ["Open", "High", "Low", "Close"]] *= rng.uniform(0.9, 1.1)
+        Xt_, _ = build_intraday(df_t, sh, vh, {"qqq": qh, "ovn": oh_})
         a = X_full[(X_full["day"] == d) & (X_full["k"] == k)][feats]
         b = Xt_[(Xt_["day"] == d) & (Xt_["k"] == k)][feats] if len(Xt_) else a.iloc[0:0]
         if a.empty:
@@ -1207,7 +1292,8 @@ def candidate_setups(cur):
                 ["smc"], ["simple", "smc"], ["simple", "levels", "smc"], ["simple", "levels", "flexible", "smc"],
                 ["simple", "trend", "smc"], ["simple", "levels", "flexible", "trend"],
                 ["momentum"], ["simple", "momentum"], ["simple", "levels", "flexible", "momentum"],
-                ["momentum", "smc"], ["simple", "momentum", "smc"]):
+                ["momentum", "smc"], ["simple", "momentum", "smc"],
+                ["ict"], ["simple", "ict"], ["simple", "levels", "flexible", "ict"], ["smc", "ict"]):
         if sorted(mem) != sorted(cur["members"]):
             c = copy.deepcopy(cur)
             c["members"] = mem
@@ -3036,6 +3122,21 @@ def intraday_scan(state, paper, pos, now, cache):
     done_bars = g[g.index + pd.Timedelta(hours=1) <= pd.Timestamp(now)] if len(g) > 1 else g
     row.update(smc_features(smc_daily(prior), price, float(g["High"].max()), float(g["Low"].min()),
                             done_bars if len(done_bars) else g))
+    try:                                             # ICT inputs, matched to the training checkpoint time
+        prev_d = df.index[-2].date()
+        q = _EXT.get("qqq")
+        qd = q[q.index.date == today_d] if q is not None and len(q) else None
+        qp = q[q.index.date == prev_d] if q is not None and len(q) else None
+        t_chk = (dt.datetime.combine(today_d, dt.time(9, 30)) + dt.timedelta(hours=kk)).time()
+        row.update(ict_features(t_chk, price, float(g["High"].max()), float(g["Low"].min()),
+                                float(df["high"].iloc[-2]), float(df["low"].iloc[-2]),
+                                float(prior["high"].tail(5).max()), float(prior["low"].tail(5).min()),
+                                overnight_range(_EXT.get("ovn"), prev_d, today_d),
+                                qd if qd is not None and len(qd) else None,
+                                (float(qp["High"].max()), float(qp["Low"].min())) if qp is not None and len(qp) else None))
+    except Exception as e_:
+        print(f"ICT inputs unavailable: {e_}", file=sys.stderr)
+        row.update(ict_features(dt.time(12), price, price, price, price, price, price, price))
     frame = pd.DataFrame([row])
     probs = {n: float(m.predict_proba(frame[COMMITTEE[n][1]])[:, 1][0]) for n, m in models.items()}
     if "judge" in committee_names():
