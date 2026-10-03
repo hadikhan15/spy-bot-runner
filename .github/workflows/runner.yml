@@ -11,6 +11,9 @@ on:
     # GitHub's timer can run hours late or skip. The first one to fire starts the day;
     # later ones wait in line, and exit right away once the day is covered.
     - cron: "7,37 13-20 * * 1-5"
+    # early start: GitHub's pre-dawn timer runs far closer to on time than its busy daytime
+    # one, so the watcher is already running (waiting for the open) before 9:30.
+    - cron: "7 10 * * 1-5"
     - cron: "0 23 1 * *"         # monthly re-test + self-tuning
   workflow_dispatch:
     inputs:
@@ -24,7 +27,7 @@ permissions:
   contents: write   # only used for the monthly heartbeat that keeps this repo active
 
 concurrency:
-  group: runner-${{ (github.event.schedule == '7,37 13-20 * * 1-5' || github.event.inputs.command == 'watch') && 'watch' || 'main' }}
+  group: runner-${{ (github.event.schedule == '7,37 13-20 * * 1-5' || github.event.schedule == '7 10 * * 1-5' || github.event.inputs.command == 'watch') && 'watch' || 'main' }}
   cancel-in-progress: false
 
 jobs:
@@ -57,7 +60,7 @@ jobs:
         run: |
           if [ "${{ github.event.schedule }}" = "0 23 1 * *" ]; then
             CMD=backtest
-          elif [ "${{ github.event.schedule }}" = "7,37 13-20 * * 1-5" ]; then
+          elif [ "${{ github.event.schedule }}" = "7,37 13-20 * * 1-5" ] || [ "${{ github.event.schedule }}" = "7 10 * * 1-5" ]; then
             CMD=watch
           else
             CMD="${{ github.event.inputs.command || 'alert' }}"
