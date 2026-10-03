@@ -12,7 +12,7 @@
   },
   "model": {
     "model_type": "logistic",
-    "history_start": "2006-01-01",
+    "history_start": "2016-01-01",
     "min_train_years": 5,
     "horizon_days": 1,
     "retrain_every_days": 21,
@@ -54,7 +54,7 @@
     "day_trade": true,
     "structure": "single",
     "min_premium": 90,
-    "max_premium": 110,
+    "max_premium": 140,
     "stop_loss_dollars": 40,
     "exit_profile": "runner",
     "trail_ladder": [
@@ -99,7 +99,10 @@
       "auto_max_per_week": 1,
       "recent_window": 20
     },
-    "fees_per_trade": 0.1
+    "fees_per_trade": 0.1,
+    "compare_max_premium": [
+      110
+    ]
   },
   "notify": {
     "ntfy": true,
@@ -113,5 +116,8 @@
     "interval_sec": 30,
     "scan_every_min": 5,
     "until": "15:50"
+  },
+  "alpaca": {
+    "paper_orders": true
   }
 }

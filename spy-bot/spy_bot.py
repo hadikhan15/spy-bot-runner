@@ -39,6 +39,9 @@ from sklearn.metrics import roc_auc_score
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
+from spybot.data import to_hourly_930  # noqa: E402
+from spybot.stats import deflated_sharpe, hac_t, pbo_cscv, risk_stats  # noqa: E402
+
 HERE = Path(__file__).resolve().parent
 load_dotenv(HERE / ".env")
 for _s in (sys.stdout, sys.stderr):                  # Windows consoles/log files: never crash on "→" or "≥"
@@ -310,13 +313,16 @@ def ladder_lines(entry):
     return out
 
 
+# Your rule: the $40 stop is the most a trade can lose; there is NO profit target; the stop
+# only ever moves up as the trade gains (locking in profit), in steps that aren't so tight
+# they knock out a winner early. Three ladders the backtest compares (all trailing-only):
 EXIT_PROFILES = {
-    # sell fast: breakeven stop at +15%, lock +10% at +25%, take profit at +30%
-    "quick": {"profit_target_pct": 0.30, "trail_ladder": [[0.15, 0.0], [0.25, 0.10]]},
-    # middle: breakeven at +25%, lock +20% at +40%, take profit at +60%
-    "balanced": {"profit_target_pct": 0.60, "trail_ladder": [[0.25, 0.0], [0.40, 0.20]]},
-    # let winners run: no fixed target, ladder only
+    # tighter: breakeven at +30%, lock +25% at +60%, +60% at +100%, +120% at +200%
+    "runner_tight": {"profit_target_pct": None, "trail_ladder": [[0.3, 0.0], [0.6, 0.25], [1.0, 0.6], [2.0, 1.2]]},
+    # current: breakeven at +50%, lock +50% at +100%, +100% at +200%
     "runner": {"profit_target_pct": None, "trail_ladder": [[0.5, 0.0], [1.0, 0.5], [2.0, 1.0]]},
+    # looser: breakeven at +75%, lock +60% at +150%, +150% at +300%
+    "runner_loose": {"profit_target_pct": None, "trail_ladder": [[0.75, 0.0], [1.5, 0.6], [3.0, 1.5]]},
 }
 
 
@@ -599,10 +605,10 @@ def bot_gate(kind, row, bots=None):
 
 
 def exit_style_for(vix_now, bots=None):
-    """Exit bot: runner when the market is calm, quick when it's wild."""
+    """Exit bot: the normal ladder when the market is calm, the tighter one when it's wild."""
     bots = bots or bots_on()
     if bots["exit"]:
-        return "runner" if vix_now < bot_cfg("exit_vix_split") else "quick"
+        return "runner" if vix_now < bot_cfg("exit_vix_split") else "runner_tight"
     return TRADE.get("exit_profile", "runner")
 
 
@@ -638,6 +644,192 @@ def committee_vote(probs, base):
     p = float(np.mean(list(probs.values())))
     sides = {np.sign(v - base) for v in probs.values()}
     return p, len(sides) == 1
+
+
+# ============================================================= Alpaca (paper account + market data)
+# Free Alpaca account: live SPY prices, SPY/QQQ history back to 2016, option quotes, and a
+# PAPER (fake-money) account the bot mirrors its practice trades into, to learn real fills.
+# Locked to paper: the only trading URL in this file is the paper one, and the keys must
+# belong to a paper account (number starts with "PA"), or nothing is sent.
+ALPACA_TRADE = "https://paper-api.alpaca.markets"
+ALPACA_DATA = "https://data.alpaca.markets"
+_ALP = {"ok": None, "checked": 0.0}
+_ALP_HIST = {}
+_STREAM = {"price": None, "t": 0.0, "thread": None}
+
+
+def alpaca_keys():
+    k, s_ = os.environ.get("ALPACA_KEY_ID"), os.environ.get("ALPACA_SECRET_KEY")
+    return (k.strip(), s_.strip()) if k and s_ else None
+
+
+def _alp(method, url, params=None, body=None, timeout=20):
+    import requests
+    keys = alpaca_keys()
+    if not keys:
+        raise RuntimeError("no Alpaca keys")
+    r = requests.request(method, url, params=params, json=body, timeout=timeout,
+                         headers={"APCA-API-KEY-ID": keys[0], "APCA-API-SECRET-KEY": keys[1]})
+    if r.status_code >= 400:
+        raise RuntimeError(f"Alpaca {r.status_code}: {r.text[:200]}")
+    return r.json() if r.text else {}
+
+
+def alpaca_ready():
+    """Keys present and verified to be a PAPER account. Re-checked every 10 minutes after a failure."""
+    if _ALP["ok"] or (_ALP["ok"] is False and time.time() - _ALP["checked"] < 600):
+        return bool(_ALP["ok"])
+    if not alpaca_keys():
+        _ALP.update(ok=False, checked=time.time())
+        return False
+    try:
+        acct = _alp("GET", f"{ALPACA_TRADE}/v2/account")
+        ok = str(acct.get("account_number", "")).startswith("PA")
+        if not ok:
+            print("Alpaca keys don't belong to a paper account: Alpaca is not used.", file=sys.stderr)
+    except Exception as e:
+        print(f"Alpaca unavailable: {e}", file=sys.stderr)
+        ok = False
+    _ALP.update(ok=ok, checked=time.time())
+    return ok
+
+
+def start_spy_stream():
+    """Live SPY trades over a WebSocket (Alpaca's free IEX feed), kept in _STREAM.
+    Reconnects by itself; if it can't connect, the bot just uses its regular checks."""
+    if _STREAM["thread"] is not None or not alpaca_ready():
+        return
+    try:
+        import websocket
+    except ImportError:
+        return
+    keys = alpaca_keys()
+
+    def on_open(ws):
+        ws.send(json.dumps({"action": "auth", "key": keys[0], "secret": keys[1]}))
+        ws.send(json.dumps({"action": "subscribe", "trades": ["SPY"]}))
+
+    def on_message(ws, msg):
+        try:
+            for m in json.loads(msg):
+                if m.get("T") == "t" and m.get("S") == "SPY":
+                    _STREAM.update(price=float(m["p"]), t=time.time())
+                elif m.get("T") == "error":
+                    _STREAM["error"] = m.get("msg")
+        except Exception:
+            pass
+
+    def run():
+        while True:
+            try:
+                websocket.WebSocketApp("wss://stream.data.alpaca.markets/v2/iex", on_open=on_open,
+                                       on_message=on_message).run_forever(ping_interval=30, ping_timeout=10)
+            except Exception:
+                pass
+            time.sleep(15)
+    import threading
+    _STREAM["thread"] = threading.Thread(target=run, daemon=True)
+    _STREAM["thread"].start()
+
+
+def live_spy_price(max_age=120):
+    """Freshest SPY price: the live stream, else Alpaca's latest trade. None if neither is fresh."""
+    if _STREAM["price"] and time.time() - _STREAM["t"] < 15:
+        return _STREAM["price"]
+    if not alpaca_ready():
+        return None
+    try:
+        t = _alp("GET", f"{ALPACA_DATA}/v2/stocks/SPY/trades/latest", params={"feed": "iex"})["trade"]
+        age = (pd.Timestamp.now(tz="UTC") - pd.Timestamp(t["t"])).total_seconds()
+        return float(t["p"]) if age < max_age else None
+    except Exception:
+        return None
+
+
+def occ_symbol(kind, expiration, strike):
+    d = dt.date.fromisoformat(str(expiration)[:10])
+    return f"SPY{d:%y%m%d}{'C' if kind == 'call' else 'P'}{int(round(float(strike) * 1000)):08d}"
+
+
+def alpaca_option_mid(occ):
+    """Mid of the latest bid/ask for one option contract (Alpaca's free indicative feed)."""
+    if not alpaca_ready():
+        return None
+    try:
+        q = _alp("GET", f"{ALPACA_DATA}/v1beta1/options/quotes/latest",
+                 params={"symbols": occ, "feed": "indicative"})["quotes"].get(occ)
+        bid, ask = float(q.get("bp") or 0), float(q.get("ap") or 0)
+        return (bid + ask) / 2 if bid > 0 and ask >= bid else None
+    except Exception:
+        return None
+
+
+def alpaca_paper_order(occ, side):
+    """Market order for 1 contract in the Alpaca PAPER account. Returns the order id or None."""
+    if not (alpaca_ready() and CFG.get("alpaca", {}).get("paper_orders", True)):
+        return None
+    try:
+        if side == "sell":                           # only ever sell what the paper account holds
+            try:
+                if float(_alp("GET", f"{ALPACA_TRADE}/v2/positions/{occ}").get("qty", 0)) < 1:
+                    return None
+            except RuntimeError:
+                return None
+        o = _alp("POST", f"{ALPACA_TRADE}/v2/orders", body={"symbol": occ, "qty": "1", "side": side,
+                                                             "type": "market", "time_in_force": "day"})
+        print(f"Alpaca paper {side} sent: {occ}")
+        return o.get("id")
+    except Exception as e:
+        print(f"Alpaca paper {side} {occ} failed: {e}", file=sys.stderr)
+        return None
+
+
+def alpaca_fill(order_id):
+    try:
+        v = _alp("GET", f"{ALPACA_TRADE}/v2/orders/{order_id}").get("filled_avg_price")
+        return float(v) if v else None
+    except Exception:
+        return None
+
+
+def alpaca_hist(sym):
+    """30-minute SPY/QQQ bars (all US exchanges) from model.history_start until 20 minutes ago.
+    Returns (regular-hours bars regrouped into hourly bars starting at :30, like Yahoo's,
+    extended-hours 30-minute bars). Downloaded once per day per process."""
+    key = (sym, dt.date.today())
+    if key in _ALP_HIST:
+        return _ALP_HIST[key]
+    start = str(MODEL.get("history_start", "2016-01-01"))
+    end = (pd.Timestamp.now(tz="UTC") - pd.Timedelta(minutes=20)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    rows, token = [], None
+    for _ in range(200):
+        prm = {"symbols": sym, "timeframe": "30Min", "start": start, "end": end, "adjustment": "all",
+               "feed": "sip", "limit": 10000}
+        if token:
+            prm["page_token"] = token
+        r = _alp("GET", f"{ALPACA_DATA}/v2/stocks/bars", params=prm, timeout=60)
+        rows += (r.get("bars") or {}).get(sym, [])
+        token = r.get("next_page_token")
+        if not token:
+            break
+    if not rows:
+        raise RuntimeError(f"no Alpaca bars for {sym}")
+    df = pd.DataFrame(rows)
+    df.index = pd.DatetimeIndex(pd.to_datetime(df["t"], utc=True)).tz_convert("America/New_York")
+    df = df.rename(columns={"o": "Open", "h": "High", "l": "Low", "c": "Close", "v": "Volume"})[
+        ["Open", "High", "Low", "Close", "Volume"]].astype(float)
+    if len(_ALP_HIST) > 6:
+        _ALP_HIST.clear()
+    _ALP_HIST[key] = to_hourly_930(df)
+    return _ALP_HIST[key]
+
+
+def _older_first(alp, yf_df):
+    """Alpaca's older history in front of Yahoo's recent bars (Yahoo wins where both exist)."""
+    if yf_df is None or len(yf_df) == 0:
+        return alp
+    first = yf_df.index.min().normalize()
+    return pd.concat([alp[alp.index < first], yf_df[["Open", "High", "Low", "Close", "Volume"]]]).sort_index()
 
 
 _EXT = {}            # extra hourly data for the ICT inputs: {"qqq": QQQ bars, "ovn": SPY extended-hours bars}
@@ -700,6 +892,14 @@ def load_hourly():
     vix = yf.Ticker("^VIX").history(period="730d", interval="1h")
     if not vix.empty:
         vix.index = vix.index.tz_convert("America/New_York")
+    if MODEL.get("history_start") and alpaca_ready():   # years more history from Alpaca
+        try:
+            spy_a, spy_ext = alpaca_hist("SPY")
+            spy = _older_first(spy_a, spy)
+            _EXT["ovn"] = _older_first(spy_ext, _EXT.get("ovn"))
+            _EXT["qqq"] = _older_first(alpaca_hist("QQQ")[0], _EXT.get("qqq"))
+        except Exception as e:
+            print(f"Alpaca history unavailable, using Yahoo's 2 years: {e}", file=sys.stderr)
     return spy, vix
 
 
@@ -903,9 +1103,11 @@ def run_intraday(Xt, day_bars, decide, bots=None):
                                list(zip(bars["High"], bars["Low"], bars["Close"])))
             if res:
                 k, entry, exit_v, why = res
+                sgn = 1 if kind == "call" else -1
                 trades.append({"entry_date": day, "time": r["time"], "kind": kind, "exit_style": style,
                                "edge": r["p"] - r["base"] if "p" in r else 0.0,
                                "entry": round(entry, 3), "exit": round(exit_v, 3),
+                               "spy_move": round(sgn * (float(bars["Close"].iloc[-1]) / float(r["price"]) - 1), 5),
                                "pnl": round((exit_v - entry) * 100 - fees(), 2), "reason": why})
             break
     return pd.DataFrame(trades)
@@ -929,7 +1131,8 @@ def option_outcomes(Xt, day_bars, bots=None):
     can switch it by VIX). Cached per setup."""
     bots = bots_on() if bots is None else bots
     key = (len(Xt), str(Xt["day"].min()), str(Xt["day"].max()), TRADE.get("exit_profile"),
-           json.dumps([TRADE.get("trail_ladder"), TRADE.get("profit_target_pct")], default=str),
+           json.dumps([TRADE.get("trail_ladder"), TRADE.get("profit_target_pct"), TRADE.get("max_premium"),
+                       TRADE.get("stop_loss_dollars"), TRADE.get("slippage_per_leg")], default=str),
            tuple(sorted(bots.items())),
            MODEL.get("iv_scale", 1.0), MODEL.get("iv_source", "vix9d"))
     if key in _OUTCOMES:
@@ -1034,25 +1237,6 @@ FEATURE_GROUPS = {
 }
 
 
-def risk_stats(trades, days):
-    """Sharpe/Sortino on daily P&L (zero on days without a trade), drawdown, profit factor."""
-    if trades.empty:
-        return None
-    pnl = trades.groupby(pd.to_datetime(trades["entry_date"]))["pnl"].sum()
-    daily = pnl.reindex(pd.to_datetime(sorted(days)), fill_value=0.0)
-    eq = daily.cumsum()
-    dd = eq - eq.cummax()
-    under = (dd < 0).astype(int)
-    longest = int(under.groupby((under == 0).cumsum()).sum().max()) if len(under) else 0
-    sd = daily.std()
-    down = float(np.sqrt(np.mean(np.minimum(daily.values, 0.0) ** 2))) if len(daily) else 0.0   # downside deviation
-    wins, losses = trades.loc[trades["pnl"] > 0, "pnl"], trades.loc[trades["pnl"] <= 0, "pnl"]
-    return {"sharpe": float(daily.mean() / sd * math.sqrt(252)) if sd > 0 else 0.0,
-            "sortino": float(daily.mean() / down * math.sqrt(252)) if down and down > 0 else 0.0,
-            "max_dd": float(dd.min()), "longest_dd": longest,
-            "pf": float(wins.sum() / -losses.sum()) if len(losses) and losses.sum() < 0 else float("inf"),
-            "avg_win": float(wins.mean()) if len(wins) else 0.0,
-            "avg_loss": float(losses.mean()) if len(losses) else 0.0, "drawdown": dd}
 
 
 def permutation_test(Xt, day_bars, trades, n=2000, seed=7):
@@ -1160,6 +1344,10 @@ def quant_report(Xt, day_bars, trades, cdir, tag, decide=None):
                   f"{len(lt)} trades, ${lt['pnl'].sum():.0f} (vs ${trades['pnl'].sum():.0f} on time). "
                   f"{'The edge survives delays.' if lt['pnl'].sum() > 0 else 'The edge does NOT survive a delay: act fast or not at all.'}", ""]
     pt = permutation_test(Xt, day_bars, trades)
+    _LAST["quant"] = {"p_random": pt.get("p_random"), "p_direction": pt.get("p_direction")} if pt else {}
+    if rs:
+        _LAST["quant"].update(sharpe=round(rs["sharpe"], 3), sortino=round(rs["sortino"], 3),
+                              max_dd=round(rs["max_dd"], 2), pf=round(rs["pf"], 3) if np.isfinite(rs["pf"]) else None)
     if pt:
         verdict = ("**looks like skill**" if pt["p_random"] < 0.05 and pt["p_direction"] < 0.05 else
                    "**not clearly better than luck yet**")
@@ -1293,11 +1481,17 @@ def candidate_setups(cur):
                 ["simple", "trend", "smc"], ["simple", "levels", "flexible", "trend"],
                 ["momentum"], ["simple", "momentum"], ["simple", "levels", "flexible", "momentum"],
                 ["momentum", "smc"], ["simple", "momentum", "smc"],
-                ["ict"], ["simple", "ict"], ["simple", "levels", "flexible", "ict"], ["smc", "ict"]):
+                ["ict"], ["simple", "ict"], ["simple", "levels", "flexible", "ict"], ["smc", "ict"],
+                ["simple", "smc", "ict"], ["simple", "momentum", "ict"], ["simple", "smc", "momentum"],
+                ["simple", "smc", "momentum", "ict"]):
         if sorted(mem) != sorted(cur["members"]):
             c = copy.deepcopy(cur)
             c["members"] = mem
             cands.append((f"committee → {' + '.join(mem)}", c))
+    c = copy.deepcopy(cur)
+    c["members"] = list(COMMITTEE)
+    if sorted(c["members"]) != sorted(cur["members"]):
+        cands.append(("committee → all specialists, equal weight", c))
     pick = review_pick()
     if pick and sorted(pick) != sorted(cur["members"]):
         c = copy.deepcopy(cur)
@@ -1338,61 +1532,10 @@ def eval_setup(setup, Xt, day_bars):
         TRADE["exit_profile"] = saved
 
 
-def hac_t(x, lags=5):
-    """t-statistic of the mean that allows for day-to-day correlation (Newey-West)."""
-    x = np.asarray(x, dtype=float)
-    n = len(x)
-    if n < 20:
-        return 0.0
-    d = x - x.mean()
-    var = d @ d / n
-    for l_ in range(1, lags + 1):
-        var += 2 * (1 - l_ / (lags + 1)) * (d[l_:] @ d[:-l_]) / n
-    return float(x.mean() / math.sqrt(var / n)) if var > 0 else 0.0
 
 
-def pbo_cscv(M, S=10):
-    """Probability of Backtest Overfitting (Bailey, Borwein, López de Prado, Zhu):
-    split the days into S blocks; for every half/half split, pick the best setup on
-    one half and see where it ranks on the other. PBO = how often the in-sample
-    winner lands in the bottom half out of sample. Near 0 = picking works; 0.5+ =
-    picking the best backtest is no better than chance."""
-    from itertools import combinations
-    from scipy.stats import rankdata
-    M = np.asarray(M, dtype=float)                   # days × setups, daily P&L
-    M = np.unique(M, axis=1) if M.ndim == 2 and M.shape[1] else M   # identical setups count once
-    T, N = M.shape
-    if N < 4 or T < S * 5:
-        return None
-    blocks = np.array_split(np.arange(T), S)
-
-    def sr(A):
-        sd = A.std(axis=0, ddof=1)
-        return np.where(sd > 0, A.mean(axis=0) / np.where(sd > 0, sd, 1), 0.0)
-    lam = []
-    for J in combinations(range(S), S // 2):
-        tr = np.concatenate([blocks[i] for i in J])
-        te = np.setdiff1d(np.arange(T), tr)
-        best = int(np.argmax(sr(M[tr])))
-        w = rankdata(sr(M[te]))[best] / (N + 1)      # average rank, so ties don't flatter
-        lam.append(math.log(w / (1 - w)))
-    return float(np.mean(np.array(lam) <= 0))
 
 
-def deflated_sharpe(daily, sr_trials, n_trials):
-    """Deflated Sharpe Ratio (Bailey & López de Prado): the chance the chosen
-    setup's Sharpe beats the best Sharpe you'd expect by luck after n_trials tries."""
-    from scipy.stats import norm, skew, kurtosis
-    r = np.asarray(daily, dtype=float)
-    if len(r) < 30 or r.std(ddof=1) == 0 or n_trials < 2:
-        return None
-    sr_ = r.mean() / r.std(ddof=1)
-    g3, g4 = skew(r), kurtosis(r, fisher=False)
-    eg = 0.5772156649
-    v = np.var(sr_trials, ddof=1) if len(sr_trials) > 1 else 0.0
-    sr0 = math.sqrt(max(v, 0)) * ((1 - eg) * norm.ppf(1 - 1 / n_trials) + eg * norm.ppf(1 - 1 / (n_trials * math.e)))
-    den = math.sqrt(max(1 - g3 * sr_ + (g4 - 1) / 4 * sr_ ** 2, 1e-9))
-    return float(norm.cdf((sr_ - sr0) * math.sqrt(len(r) - 1) / den))
 
 
 TUNE_MIN_T = 3.0   # self-tuner: minimum steadiness (Newey-West t-stat) of a change's daily edge
@@ -1400,103 +1543,256 @@ TUNE_MAX_PBO = 0.5  # self-tuner: refuse to adopt when picking-the-best looks li
 LEDGER_PATH = HERE / "reports" / "tuner_trials.csv"
 
 
-def self_tune(Xt, day_bars):
-    """Test every one-step change against the current setup on the hourly history.
-    Adopt the best one ONLY if (1) it adds a real amount of money, (2) it does better
-    in BOTH the older and the newer half of the data, and (3) its day-by-day edge over
-    the current setup is steady enough that luck is an unlikely explanation
-    (t-statistic of the daily P&L differences >= TUNE_MIN_T). With ~25 candidates
-    tested each month, (3) is what stops the bot from adopting noise."""
+def write_run_record(report_path, spy_h=None, trades=None):
+    """Everything needed to reproduce and compare a backtest: code version, settings, inputs,
+    periods, seeds, data timestamps and results. reports/runs/<time>.json + reports/runs.csv."""
+    import hashlib
+    rid = dt.datetime.utcnow().strftime("%Y-%m-%dT%H%M%SZ")
+    git = subprocess.run(["git", "rev-parse", "HEAD"], cwd=HERE, capture_output=True, text=True).stdout.strip()
+    code = hashlib.sha256(b"".join(f.read_bytes() for f in [HERE / "spy_bot.py"] + sorted((HERE / "spybot").glob("*.py"))))
+    cfg = copy.deepcopy(CFG)
+    for k in ("account", "approved"):
+        cfg.pop(k, None)
+    cfg.get("notify", {}).pop("email", None)
+    rec = {"run_id": rid, "report": report_path.name, "git_commit": git, "code_sha256": code.hexdigest(),
+           "python": sys.version.split()[0], "host": HOST,
+           "data": {"hourly_first": str(spy_h.index.min()) if spy_h is not None else None,
+                    "hourly_last": str(spy_h.index.max()) if spy_h is not None else None,
+                    "hourly_bars": int(len(spy_h)) if spy_h is not None else None,
+                    "history_start_setting": MODEL.get("history_start"),
+                    "sources": ["Alpaca (older years)" if MODEL.get("history_start") and alpaca_ready() else None,
+                                "Yahoo (last 2 years, VIX)"],
+                    "downloaded_utc": rid},
+           "validation": {"walk_forward": {"min_days": 120, "retrain_every_days": 21},
+                          "holdout_start": _LAST.get("tune", {}).get("holdout_start"),
+                          "seeds": {"permutation": 7, "selftest": 11, "pbo_blocks": 10}},
+           "setup": {"committee": committee_names(),
+                     "specialists": {n: {"model": mt, "inputs": f} for n, (mt, f) in COMMITTEE.items()},
+                     "settings": cfg},
+           "results": {"trades": int(len(trades)) if trades is not None else None,
+                       "pnl": round(float(trades["pnl"].sum()), 2) if trades is not None and len(trades) else None,
+                       **_LAST.get("quant", {}),
+                       "breakeven_slip_per_share": _LAST.get("breakeven_slip"),
+                       "tuner": _LAST.get("tune")}}
+    d = OUT / "runs"
+    d.mkdir(exist_ok=True)
+    (d / f"{rid}.json").write_text(json.dumps(rec, indent=2, default=str), encoding="utf-8")
+    flat = {"run_id": rid, "git_commit": git[:10], "code": rec["code_sha256"][:10], "first_bar": rec["data"]["hourly_first"],
+            "last_bar": rec["data"]["hourly_last"], "trades": rec["results"]["trades"], "pnl": rec["results"]["pnl"],
+            "sharpe": rec["results"].get("sharpe"), "max_dd": rec["results"].get("max_dd"),
+            "p_random": rec["results"].get("p_random"), "p_direction": rec["results"].get("p_direction"),
+            "pbo": (_LAST.get("tune") or {}).get("pbo"), "dsr": (_LAST.get("tune") or {}).get("dsr"),
+            "adopted": (_LAST.get("tune") or {}).get("adopted")}
+    lp = OUT / "runs.csv"
+    pd.DataFrame([flat]).to_csv(lp, mode="a", header=not lp.exists(), index=False)
+    print(f"Run record: reports/runs/{rid}.json")
+
+
+def tradable_report(Xt, day_bars, trades):
+    """Profit is the goal, accuracy is a diagnostic: follow each signal from prediction to SPY's
+    move to the option's return to the dollars, then stress the execution costs."""
+    if trades is None or trades.empty or "spy_move" not in trades:
+        return []
+    t = trades.copy()
+    t["opt_ret"] = t["exit"] / t["entry"] - 1
+    a = t["edge"].abs()
+    L = ["", "## From prediction to P&L", "",
+         "| Signal strength | Trades | SPY moved our way by the close | Avg SPY move our way | Avg option return | Avg P&L | Total P&L |",
+         "|---|---|---|---|---|---|---|"]
+    for lo, hi, nm in [(0, .1, "under 10%"), (.1, .15, "10-15%"), (.15, 1, "15% or more")]:
+        g = t[(a >= lo) & (a < hi)]
+        if len(g):
+            L.append(f"| {nm} | {len(g)} | {(g['spy_move'] > 0).mean():.0%} | {g['spy_move'].mean():+.2%} | "
+                     f"{g['opt_ret'].mean():+.1%} | ${g['pnl'].mean():+.2f} | ${g['pnl'].sum():+.2f} |")
+    L += ["", "_Stronger signals should show a bigger SPY move our way, then a bigger option return. If the SPY "
+          "move is right but the option return isn't, the edge is lost in time decay, the stop or costs._"]
+    # execution stress: worse fills on both entry and exit
+    cur = current_setup()
+    saved = TRADE["slippage_per_leg"]
+    rows = []
+    try:
+        for slip in (saved, saved + 0.02, saved + 0.04):
+            TRADE["slippage_per_leg"] = round(slip, 3)
+            tr = eval_setup(cur, Xt, day_bars)
+            rows.append((slip, len(tr), float(tr["pnl"].sum()) if len(tr) else 0.0))
+    finally:
+        TRADE["slippage_per_leg"] = saved
+    L += ["", "## Execution stress (worse fills)", "",
+          f"Base case: buy ${saved:.2f}/share above the middle price and sell ${saved:.2f} below it (about the ask and "
+          f"the bid), plus ${fees():.2f} fees per round trip.", "",
+          "| Fill vs middle price, each side | Trades | Total P&L |", "|---|---|---|"]
+    for slip, n, pnl in rows:
+        L.append(f"| ${slip:.2f}/share (${slip * 100:.0f} per contract){' ← assumed' if slip == saved else ''} | {n} | ${pnl:+.2f} |")
+    if len(rows) >= 2 and rows[0][1]:
+        per = (rows[0][2] - rows[-1][2]) / (rows[-1][0] - rows[0][0])       # $ lost per $1/share of extra slippage
+        be = rows[0][0] + rows[0][2] / per if per > 0 else None
+        _LAST["breakeven_slip"] = be
+        if be:
+            L += ["", f"**Break-even:** the edge disappears at about **${be:.2f}/share** each side "
+                  f"(${be * 100:.0f} per contract). Real SPY weekly option spreads near the money are usually a few "
+                  f"cents wide, so fills worse than that would erase the profit."]
+    return L
+
+
+def risk_compare(Xt, day_bars):
+    """Your what-if: the same signals and $ stop with a different top option price
+    (trade.compare_max_premium). Report only: risk settings are yours to change."""
+    alts = [a for a in TRADE.get("compare_max_premium", []) if a != TRADE["max_premium"]]
+    if not alts:
+        return []
+    cur = current_setup()
+    saved = TRADE["max_premium"]
     days = sorted(Xt["day"].unique())
-    mid = days[len(days) // 2]
+    L = ["", "## What if the option price range were different? (report only)", "",
+         f"Same signals, same ${TRADE['stop_loss_dollars']} stop, sized for the current account (the bot never "
+         f"uses more than {RULES['max_position_pct']:.0%} of it or dips below the ${RULES['cash_buffer']} cash buffer).", "",
+         "| Option price range | Trades | Win rate | Total P&L | Avg per trade | Worst drawdown | Longest losing streak |",
+         "|---|---|---|---|---|---|---|"]
+    try:
+        for mx in [saved] + alts:
+            TRADE["max_premium"] = mx
+            tr = eval_setup(cur, Xt, day_bars)
+            rs = risk_stats(tr, days) if len(tr) else None
+            streak = int((tr["pnl"] <= 0).astype(int).groupby((tr["pnl"] > 0).cumsum()).sum().max()) if len(tr) else 0
+            L.append(f"| ${TRADE['min_premium']}-${mx}{' ← current' if mx == saved else ''} | {len(tr)} | "
+                     f"{(tr['pnl'] > 0).mean() if len(tr) else 0:.0%} | ${tr['pnl'].sum() if len(tr) else 0:.2f} | "
+                     f"${tr['pnl'].mean() if len(tr) else 0:.2f} | ${rs['max_dd'] if rs else 0:.0f} | {streak} |")
+    finally:
+        TRADE["max_premium"] = saved
+    return L + ["", "_Pricier options sit closer to the money: they move more per $1 of SPY, but the same $ stop "
+                    "is a smaller share of their price, so normal wiggles stop them out more often._"]
+
+
+TUNE_HOLDOUT_DAYS = 126   # ~6 months at the end: the "final exam" the self-tuner never selects on
+# Pre-registered changes: the only ones the tuner may adopt (few, decided in advance, so
+# picking the best can't turn into fitting noise). Everything else is reported, never adopted.
+REGISTERED = ("exit style →", "confidence bar →", "turn ON the EV filter", "turn OFF the EV filter",
+              "committee → all specialists")
+_LAST = {}                # summary of the latest tuner/quant run, for the run record
+
+
+def self_tune(Xt, day_bars):
+    """Test one change at a time against the current setup. A change is adopted ONLY if:
+    it is pre-registered; on the selection period it adds a real amount of money, wins in
+    BOTH halves and its day-by-day edge is steady (Newey-West t >= TUNE_MIN_T); it is not
+    less robust (Sharpe not lower, worst drawdown not >10% deeper); it does at least as well
+    on the final ~6 months it was never selected on; and the overfitting check (PBO across
+    the pre-registered set) is below TUNE_MAX_PBO. More money with less robustness is
+    flagged, not adopted."""
+    days = sorted(Xt["day"].unique())
+    H = int(MODEL.get("holdout_days", TUNE_HOLDOUT_DAYS))
+    H = H if len(days) >= H + 250 else 0
+    hold_start = days[-H] if H else None
+    dev = days[:-H] if H else days
+    mid = dev[len(dev) // 2]
     all_days = pd.Index(days)
+    in_dev_day = (all_days < hold_start) if H else np.ones(len(all_days), bool)
 
     def score(tr, start=None):
-        """Totals over the days from `start` on (an EV-filter setup can't trade before its
-        filter has learned, so both sides are compared only on days both could trade)."""
-        win = [d for d in days if start is None or d >= start]
-        mid_w = win[len(win) // 2] if win else mid
-        if not tr.empty and start is not None:
+        if len(tr) and start is not None:
             tr = tr[pd.to_datetime(tr["entry_date"]).dt.date >= start]
+        win = [x for x in dev if start is None or x >= start]
+        mid_w = win[len(win) // 2] if win else mid
         if tr.empty:
-            return {"n": 0, "total": 0.0, "old": 0.0, "new": 0.0, "mid": mid_w, "start": start,
-                    "daily": pd.Series(0.0, index=all_days)}
+            return {"n": 0, "total": 0.0, "old": 0.0, "new": 0.0, "hold": 0.0, "sharpe": 0.0, "max_dd": 0.0,
+                    "mid": mid_w, "start": start, "daily": pd.Series(0.0, index=all_days)}
         d = pd.to_datetime(tr["entry_date"]).dt.date
-        daily = tr.groupby(d.values)["pnl"].sum().reindex(all_days, fill_value=0.0)
-        return {"n": len(tr), "total": tr["pnl"].sum(), "mid": mid_w, "start": start,
-                "old": tr.loc[d < mid_w, "pnl"].sum(), "new": tr.loc[d >= mid_w, "pnl"].sum(),
-                "daily": daily}
+        indev = (d < hold_start).values if H else np.ones(len(tr), bool)
+        dv, dd = tr[indev], d[indev]
+        rs = risk_stats(dv, win) if len(dv) else None
+        return {"n": int(indev.sum()), "total": float(dv["pnl"].sum()),
+                "old": float(dv.loc[(dd < mid_w).values, "pnl"].sum()),
+                "new": float(dv.loc[(dd >= mid_w).values, "pnl"].sum()),
+                "hold": float(tr.loc[~indev, "pnl"].sum()),
+                "sharpe": rs["sharpe"] if rs else 0.0, "max_dd": rs["max_dd"] if rs else 0.0,
+                "mid": mid_w, "start": start,
+                "daily": tr.groupby(d.values)["pnl"].sum().reindex(all_days, fill_value=0.0)}
 
     def t_stat(a, b, start=None):
-        diff = a["daily"] - b["daily"]
-        return hac_t((diff[all_days >= start] if start is not None else diff).values)
+        m = in_dev_day & ((all_days >= start) if start is not None else True)
+        return hac_t((a["daily"] - b["daily"])[m].values)
 
     cur = current_setup()
     champ_tr = eval_setup(cur, Xt, day_bars)
     champ = score(champ_tr)
-    margin = max(200.0, 0.15 * abs(champ["total"]))
     rows, winners, starts = [], [], [champ_tr.attrs.get("start")]
     for name, cand in candidate_setups(cur):
+        reg = name.startswith(REGISTERED)
         try:
             tr = eval_setup(cand, Xt, day_bars)
         except Exception as e:
             print(f"Tuner skipped '{name}': {e}", file=sys.stderr)
             continue
-        st = max([s for s in (champ_tr.attrs.get("start"), tr.attrs.get("start")) if s is not None], default=None)
+        st = max([x for x in (champ_tr.attrs.get("start"), tr.attrs.get("start")) if x is not None], default=None)
         starts.append(tr.attrs.get("start"))
         sc, ch = score(tr, st), (score(champ_tr, st) if st is not None else champ)
         sc["t"] = t_stat(sc, ch, st)
         mg = max(200.0, 0.15 * abs(ch["total"]))
-        ok = (sc["n"] >= 100 and sc["total"] >= ch["total"] + mg
-              and sc["old"] > ch["old"] and sc["new"] > ch["new"]
-              and sc["t"] >= TUNE_MIN_T)
-        sc["vs"] = ch["total"]
-        rows.append((name, sc, ok))
-        if ok:
+        money = (sc["n"] >= 100 and sc["total"] >= ch["total"] + mg and sc["old"] > ch["old"]
+                 and sc["new"] > ch["new"] and sc["t"] >= TUNE_MIN_T)
+        robust = (sc["sharpe"] >= ch["sharpe"] and sc["max_dd"] >= 1.1 * ch["max_dd"]
+                  and (not H or sc["hold"] >= ch["hold"]))
+        verdict = ("✅ better" if money and robust and reg else
+                   "⚠️ more money, less robust: flagged, not adopted" if money and reg else
+                   "promising, but exploratory: reported, never adopted" if money and robust else "no")
+        sc.update(vs=ch["total"], vs_hold=ch["hold"], reg=reg)
+        rows.append((name, sc, verdict))
+        if verdict.startswith("✅"):
             winners.append((sc["total"], name, cand))
-    # overfitting checks across everything tried this month, on days every setup could trade
-    st_all = max([s for s in starts if s is not None], default=None)
-    keep = (all_days >= st_all) if st_all is not None else np.ones(len(all_days), bool)
-    mat = np.column_stack([champ["daily"].values[keep]] + [sc["daily"].values[keep] for _, sc, _ in rows])
+    # overfitting checks across the pre-registered set, on days every setup could trade
+    st_all = max([x for x in starts if x is not None], default=None)
+    keep = in_dev_day & ((all_days >= st_all) if st_all is not None else True)
+    reg_rows = [(n_, sc_) for n_, sc_, _ in rows if sc_["reg"]]
+    mat = np.column_stack([champ["daily"].values[keep]] + [sc_["daily"].values[keep] for _, sc_ in reg_rows])
     pbo = pbo_cscv(mat)
-    srs = [d.mean() / d.std(ddof=1) for d in mat.T if d.std(ddof=1) > 0]
+    srs = [d_.mean() / d_.std(ddof=1) for d_ in mat.T if d_.std(ddof=1) > 0]
     try:
         old_n = len(pd.read_csv(LEDGER_PATH)) if LEDGER_PATH.exists() else 0
-        pd.DataFrame([{"date": str(dt.date.today()), "change": n_, "trades": sc_["n"],
-                       "total": round(sc_["total"], 2), "t": round(sc_["t"], 2)} for n_, sc_, _ in rows]
-                     ).to_csv(LEDGER_PATH, mode="a", header=not LEDGER_PATH.exists(), index=False)
+        pd.DataFrame([{"date": str(dt.date.today()), "change": n_, "registered": sc_["reg"], "trades": sc_["n"],
+                       "total": round(sc_["total"], 2), "holdout": round(sc_["hold"], 2), "t": round(sc_["t"], 2)}
+                      for n_, sc_, _ in rows]).to_csv(LEDGER_PATH, mode="a", header=not LEDGER_PATH.exists(), index=False)
     except Exception:
         old_n = 0
     n_trials = old_n + len(rows) + 1
-    best_name = max(winners)[1] if winners else (max(rows, key=lambda x: x[1]["total"])[0] if rows else None)
-    best_daily = next((sc["daily"] for n_, sc, _ in rows if n_ == best_name), None)
-    dsr = deflated_sharpe(best_daily.values, srs, n_trials) if best_daily is not None else None
+    best_name = max(winners)[1] if winners else (max(reg_rows, key=lambda x: x[1]["total"])[0] if reg_rows else None)
+    best_daily = next((sc_["daily"] for n_, sc_ in reg_rows if n_ == best_name), None)
+    dsr = deflated_sharpe(best_daily.values[keep], srs, n_trials) if best_daily is not None else None
     pbo_blocked = bool(winners) and pbo is not None and pbo >= TUNE_MAX_PBO
     if pbo_blocked:
-        winners = []                                 # the "best" is likely luck: adopt nothing
+        winners = []
+    _LAST["tune"] = {"pbo": pbo, "dsr": dsr, "holdout_start": str(hold_start) if H else None,
+                     "registered": len(reg_rows), "exploratory": len(rows) - len(reg_rows), "trials_total": n_trials,
+                     "current_selection_pnl": round(champ["total"], 2), "current_holdout_pnl": round(champ["hold"], 2)}
     L = ["", "## Self-improvement check (one change at a time vs the current setup)", "",
          f"Current setup: committee {' + '.join(cur['members'])}, exit {cur['exit']}, confidence bar "
-         f"{cur['thr']:.0%}, bots on: {', '.join(b for b, v in cur['bots'].items() if v) or 'none'}. "
-         f"A change is adopted only if it adds at least ${margin:.0f}, does better in both halves "
-         f"(before and after {mid}), AND its day-by-day edge is steady enough to rule out luck "
-         f"(steadiness score ≥ {TUNE_MIN_T}, a Newey-West t-statistic; 3+ is strong), AND the month's "
-         f"tests don't look overfit (PBO below {TUNE_MAX_PBO:.0%}).", "",
-         f"**Overfitting checks:** probability of backtest overfitting (PBO) "
-         f"**{'n/a' if pbo is None else f'{pbo:.0%}'}** across {len(rows) + 1} setups tested this month "
-         f"(near 0% = picking the best works; 50%+ = it's luck). Deflated Sharpe of the best change"
-         f"{f' ({best_name})' if best_name else ''}: **{'n/a' if dsr is None else f'{dsr:.0%}'}** after "
-         f"{n_trials} setups tried in total (above 95% = its Sharpe beats what luck alone would produce).", "",
-         "| Change | Trades | Total P&L | Older half | Newer half | Steadiness | Verdict |",
-         "|---|---|---|---|---|---|---|",
-         f"| **current setup** | {champ['n']} | ${champ['total']:.2f} | ${champ['old']:.2f} | ${champ['new']:.2f} | - | - |"]
-    for name, sc, ok in rows:
-        note = (f" (compared from {sc['start']} on, when the EV filter had learned enough; current setup "
-                f"${sc['vs']:.2f} over the same days)" if sc.get("start") is not None else "")
-        L.append(f"| {name}{note} | {sc['n']} | ${sc['total']:.2f} | ${sc['old']:.2f} | ${sc['new']:.2f} | "
-                 f"{sc['t']:+.1f} | {'✅ better' if ok else 'no'} |")
+         f"{cur['thr']:.0%}, bots on: {', '.join(b for b, v in cur['bots'].items() if v) or 'none'}.", "",
+         f"**Rules.** Only the {len(reg_rows)} pre-registered changes can be adopted; the other {len(rows) - len(reg_rows)} "
+         f"are exploratory and only reported. Selection uses the days before "
+         f"{hold_start if H else 'the end'}; {'the last ' + str(H) + ' trading days from ' + str(hold_start) + ' are a final exam it never selects on. ' if H else ''}"
+         f"A change must add at least ${max(200.0, 0.15 * abs(champ['total'])):.0f}, win in both halves (before and after {mid}), "
+         f"have a steady daily edge (Newey-West t ≥ {TUNE_MIN_T}), not be less robust (Sharpe not lower, worst drawdown "
+         f"not >10% deeper), do at least as well in the final exam, and the pre-registered set must not look overfit "
+         f"(PBO below {TUNE_MAX_PBO:.0%}).", "",
+         f"**Overfitting checks:** probability of backtest overfitting (PBO) **{'n/a' if pbo is None else f'{pbo:.0%}'}** "
+         f"across {len(reg_rows) + 1} pre-registered setups (near 0% = picking the best works; 50%+ = it's luck). "
+         f"Deflated Sharpe of the best change{f' ({best_name})' if best_name else ''}: "
+         f"**{'n/a' if dsr is None else f'{dsr:.0%}'}** after {n_trials} setups tried in total "
+         f"(above 95% = its Sharpe beats what luck alone would produce).", "",
+         "| Change | Kind | Trades | Selection P&L | Older half | Newer half | Final exam | Sharpe | Worst drawdown | Steadiness | Verdict |",
+         "|---|---|---|---|---|---|---|---|---|---|---|",
+         f"| **current setup** | - | {champ['n']} | ${champ['total']:.2f} | ${champ['old']:.2f} | ${champ['new']:.2f} | "
+         f"${champ['hold']:.2f} | {champ['sharpe']:.2f} | ${champ['max_dd']:.0f} | - | - |"]
+    for name, sc, verdict in sorted(rows, key=lambda x: (not x[1]["reg"], x[0])):
+        note = (f" (from {sc['start']}, when the EV filter had learned enough; current setup ${sc['vs']:.2f} "
+                f"on the same days)" if sc.get("start") is not None else "")
+        L.append(f"| {name}{note} | {'registered' if sc['reg'] else 'exploratory'} | {sc['n']} | ${sc['total']:.2f} | "
+                 f"${sc['old']:.2f} | ${sc['new']:.2f} | ${sc['hold']:.2f} | {sc['sharpe']:.2f} | ${sc['max_dd']:.0f} | "
+                 f"{sc['t']:+.1f} | {verdict} |")
+    adopted = None
     if winners and MODEL.get("auto_improve", True):
         _, name, cand = max(winners)
-        champ = {**champ, "total": next(sc["vs"] for n_, sc, _ in rows if n_ == name)}
+        adopted = name
+        vs = next(sc["vs"] for n_, sc, _ in rows if n_ == name)
         MODEL["bots"] = cand["bots"]
         MODEL["meta_filter"] = bool(cand.get("meta", False))
         MODEL["committee_members"] = cand["members"]
@@ -1505,17 +1801,17 @@ def self_tune(Xt, day_bars):
         TRADE["exit_profile"] = cand["exit"]
         apply_exit_profile(cand["exit"])
         save_config()
-        msg = (f"Self-tuner adopted: {name}. Backtest P&L ${champ['total']:.0f} → "
-               f"${max(winners)[0]:.0f}, better in both halves of the data.")
+        msg = (f"Self-tuner adopted: {name}. Backtest P&L ${vs:.0f} → ${max(winners)[0]:.0f} on the selection "
+               f"period, better in both halves, steadier, and at least as good on the final 6 months it never saw.")
         log_change(msg)
         notify("SPY bot improved itself", msg + " Details in the latest backtest report.", important=True)
         L += ["", f"**Adopted: {name}.** config.json and CHANGELOG.md were updated."]
     elif winners:
         L += ["", "A better setup was found but `model.auto_improve` is off, so nothing was changed."]
     else:
-        L += ["", ("A change passed the money and steadiness tests, but the overfitting check (PBO) says picking "
-                   "winners this month is unreliable, so nothing was changed." if pbo_blocked else
-                   "No change cleared the bar. The current setup stays.")]
+        L += ["", ("A change passed, but the overfitting check (PBO) says picking winners this month is unreliable, "
+                   "so nothing was changed." if pbo_blocked else "No change cleared the bar. The current setup stays.")]
+    _LAST["tune"]["adopted"] = adopted
     return L
 
 
@@ -1937,6 +2233,14 @@ def backtest():
             lines += quant_report(Xt, day_bars, it, cdir, tag, decide=model_decide)
         except Exception as e:
             lines += ["", f"_Quant checks failed: {e}_"]
+        try:
+            lines += tradable_report(Xt, day_bars, it)
+        except Exception as e:
+            lines += ["", f"_Prediction-to-P&L report failed: {e}_"]
+        try:
+            lines += risk_compare(Xt, day_bars)
+        except Exception as e:
+            lines += ["", f"_Option price comparison failed: {e}_"]
         lines += self_tune(Xt, day_bars)
 
         # ---- exit styles: same signals, different ways of getting out
@@ -1959,9 +2263,10 @@ def backtest():
                          f"{(mt['pnl'] > 0).mean() if len(mt) else 0:.0%} | "
                          f"${itp['pnl'].sum() if len(itp) else 0:.2f} | "
                          f"{(itp['pnl'] > 0).mean() if len(itp) else 0:.0%} |")
-        lines += ["", "- **quick**: breakeven stop at +15%, lock +10% at +25%, sell at +30%",
-                  "- **balanced**: breakeven at +25%, lock +20% at +40%, sell at +60%",
-                  "- **runner**: no target; breakeven at +50%, +50% at +100%, +100% at +200%",
+        lines += ["", "All three: $40 stop, no profit target, the stop only moves up.",
+                  "- **runner_tight**: breakeven at +30%, lock +25% at +60%, +60% at +100%, +120% at +200%",
+                  "- **runner**: breakeven at +50%, lock +50% at +100%, +100% at +200%",
+                  "- **runner_loose**: breakeven at +75%, lock +60% at +150%, +150% at +300%",
                   "", "_Pick with care: choosing the best of three is a small form of fitting the past. "
                   "Prefer a style that does well in BOTH columns._"]
 
@@ -2015,6 +2320,10 @@ def backtest():
                "to review it.\n\n" + "\n".join(keep[:8]), important=True)
     path = OUT / f"backtest_{dt.date.today()}.md"
     path.write_text(report, encoding="utf-8")
+    try:
+        write_run_record(path, locals().get("spy_h"), locals().get("it"))
+    except Exception as e:
+        print(f"Run record not saved: {e}", file=sys.stderr)
     if not model_tr.empty:
         model_tr.drop(columns="exit_idx").to_csv(OUT / f"backtest_trades_{dt.date.today()}.csv",
                                                  index=False)
@@ -2300,7 +2609,8 @@ def intraday_track_record(df):
 
 PAPER_PATH = HERE / "paper_trades.csv"
 PAPER_COLS = ["id", "entry_date", "entry_time", "source", "exit_style", "strength", "exp_value", "kind", "expiration", "long", "short", "entry",
-              "status", "last_value", "peak", "exit_date", "exit", "reason", "pnl", "opinions"]
+              "status", "last_value", "peak", "exit_date", "exit", "reason", "pnl", "opinions",
+              "alp_buy_id", "alp_buy", "alp_sell_id", "alp_sell"]
 
 
 def load_paper():
@@ -2312,15 +2622,20 @@ def load_paper():
     for col in PAPER_COLS:
         if col not in p.columns:
             p[col] = np.nan
-    for col in ("id", "entry_date", "entry_time", "source", "exit_style", "kind", "expiration", "status", "exit_date", "reason", "opinions"):
+    for col in ("id", "entry_date", "entry_time", "source", "exit_style", "kind", "expiration", "status", "exit_date",
+                "reason", "opinions", "alp_buy_id", "alp_sell_id"):
         p[col] = p[col].astype(object)
-    for col in ("exp_value", "long", "short", "entry", "last_value", "peak", "exit", "pnl", "strength"):
+    for col in ("exp_value", "long", "short", "entry", "last_value", "peak", "exit", "pnl", "strength", "alp_buy", "alp_sell"):
         p[col] = pd.to_numeric(p[col], errors="coerce").astype(float)
     return p
 
 
 def current_value(kind, expiration, k_long, k_short, cache):
     """Mid price right now of a single option (k_short None/NaN) or a spread."""
+    if k_short is None or (isinstance(k_short, float) and math.isnan(k_short)):
+        m = alpaca_option_mid(occ_symbol(kind, expiration, k_long))
+        if m:
+            return m
     if expiration not in cache:
         cache[expiration] = yf.Ticker("SPY").option_chain(expiration)
     table = cache[expiration].calls if kind == "call" else cache[expiration].puts
@@ -2344,6 +2659,12 @@ def update_paper(paper, cache, force_close=False):
     ones. force_close = end of day for day trades."""
     today = dt.date.today()
     closed = []
+    for i, r in paper.iterrows():                    # fill prices of the Alpaca paper mirror
+        for idc, pc in (("alp_buy_id", "alp_buy"), ("alp_sell_id", "alp_sell")):
+            if isinstance(r.get(idc), str) and r[idc] and pd.isna(r.get(pc)) and r["entry_date"] >= str(today - dt.timedelta(days=3)):
+                f_ = alpaca_fill(r[idc])
+                if f_:
+                    paper.at[i, pc] = f_
     for i, r in paper[paper["status"] == "open"].iterrows():
         single = pd.isna(r["short"])
         try:
@@ -2373,6 +2694,8 @@ def update_paper(paper, cache, force_close=False):
             pnl = round((val - entry) * 100 - fees(), 2)
             paper.loc[i, ["status", "exit_date", "exit", "reason", "pnl"]] = \
                 ["closed", str(today), round(val, 3), reason, pnl]
+            if isinstance(r.get("alp_buy_id"), str) and r["alp_buy_id"] and not isinstance(r.get("alp_sell_id"), str):
+                paper.at[i, "alp_sell_id"] = alpaca_paper_order(occ_symbol(r["kind"], r["expiration"], r["long"]), "sell")
             closed.append(f"{describe(r['kind'], r['long'], r['short'])} from "
                           f"{r['entry_date']}: {reason}, ${pnl:+.0f}")
     return closed
@@ -2396,6 +2719,8 @@ def open_paper(paper, sp, source="morning", entry_time=None, exit_style=None, ed
            "entry": entry, "status": "open", "last_value": entry, "peak": entry,
            # what each specialist thought at entry (its edge vs normal), for the trade review
            "opinions": json.dumps({k: round(float(v), 4) for k, v in opinions.items()}) if opinions else np.nan}
+    if sp["short"] is None:                          # mirror it in the Alpaca paper account
+        row["alp_buy_id"] = alpaca_paper_order(occ_symbol(sp["kind"], sp["expiration"], sp["long"]), "buy")
     return pd.concat([paper, pd.DataFrame([row])], ignore_index=True), True
 
 
@@ -3101,6 +3426,7 @@ def intraday_scan(state, paper, pos, now, cache):
     if g.empty:
         return [], False, None
     o, price = float(g["Open"].iloc[0]), float(g["Close"].iloc[-1])
+    price = live_spy_price() or price                 # Alpaca's live price when available
     vg = vix_h[vix_h.index.date == today_d] if not vix_h.empty else vix_h
     v_open = float(vg["Open"].iloc[0]) if len(vg) else float(df["vix_open"].iloc[-1])
     v_now = float(vg["Close"].iloc[-1]) if len(vg) else v_open
@@ -3826,7 +4152,7 @@ def dashboard_data():
 # journal, positions, logs and state (they mention your trades).
 PUBLIC_FILES = ["spy_bot.py", "requirements.txt", "events.json", "PAPER_JOURNAL.md", "paper_trades.csv",
                 "predictions.csv", "predictions_intraday.csv", "option_quotes.csv", "CHANGELOG.md"]
-PUBLIC_DIRS = ["charts", "reports"]
+PUBLIC_DIRS = ["charts", "reports", "spybot"]
 PRIVATE_WORDS = re.compile(r"real[- ]trade|real[- ]money (?:trade|result|P&L)|own idea|account (?:value|number|balance)"
                            r"|buying power|Agentic|TRADE_JOURNAL|real_trades\.csv|Robinhood account|positions? held",
                            re.IGNORECASE)
@@ -3888,7 +4214,10 @@ def export_public(dest):
             shutil.copy2(src, dest / f)
     for d in PUBLIC_DIRS:
         if (HERE / d).exists():
-            shutil.copytree(HERE / d, dest / d, ignore=shutil.ignore_patterns("tuner_trials.csv", "alert_*"))
+            shutil.copytree(HERE / d, dest / d, ignore=shutil.ignore_patterns("tuner_trials.csv", "alert_*", "__pycache__"))
+            for md in (dest / d).rglob("*.md"):         # reports: drop any line that points at personal trading
+                txt = md.read_text(encoding="utf-8")
+                md.write_text("\n".join(l for l in txt.splitlines() if not PRIVATE_WORDS.search(l)) + "\n", encoding="utf-8")
     cfg = copy.deepcopy(CFG)
     cfg.pop("account", None)                         # balances, positions, results
     cfg.pop("approved", None)
@@ -4004,6 +4333,14 @@ def refresh_account():
                 print(f"Watcher: picked up open position {fresh[k]}")
 
 
+def open_trade_now():
+    """Is a paper or real trade open? (The watcher then checks every 10 seconds.)"""
+    try:
+        return bool(ACCT.get("open_position")) or (load_paper()["status"] == "open").any()
+    except Exception:
+        return False
+
+
 def watch():
     """Runs through the trading day: every ~30 seconds it manages open trades
     (stops, trailing ladder, sell-now) with fresh prices; every 5 minutes it
@@ -4038,6 +4375,7 @@ def watch():
     print(f"Watcher started {now:%H:%M:%S} New York on {HOST}; checking every {W['interval_sec']}s "
           f"(new signals every {W['scan_every_min']} min) until {W['until']}.")
     mark_runner("watching")
+    start_spy_stream()
     last_slot, last_save = None, time.time()
     # GitHub stops a job after 6 hours. Hand over before that: the runner queues a
     # fresh start every 30 minutes, and the next one carries on for the rest of the day.
@@ -4075,7 +4413,7 @@ def watch():
             mark_runner("watching")
             git_save()
             last_save = time.time()
-        time.sleep(max(3, W["interval_sec"] - (time.time() - t0)))
+        time.sleep(max(3, (10 if open_trade_now() else W["interval_sec"]) - (time.time() - t0)))
     mark_runner("finished for the day")
     git_save("Live watcher: end of day")
     print("Watcher finished for the day.")
@@ -4134,6 +4472,25 @@ if __name__ == "__main__":
         out_ = Path(sys.argv[2] if len(sys.argv) > 2 else "dashboard_data.json")
         out_.write_text(json.dumps(dashboard_data(), default=str, allow_nan=False), encoding="utf-8")
         print(f"Dashboard data written to {out_}")
+    elif cmd == "alpaca-check":                     # one-off check that the Alpaca connection works
+        print("Alpaca keys present:", bool(alpaca_keys()))
+        print("Paper account verified:", alpaca_ready())
+        if alpaca_ready():
+            a_ = _alp("GET", f"{ALPACA_TRADE}/v2/account")
+            print("Status:", a_.get("status"), "| options level:", a_.get("options_trading_level"),
+                  "| options approved:", a_.get("options_approved_level"))
+            print("Latest SPY (any age):", live_spy_price(max_age=10 ** 9))
+            h_, x_ = alpaca_hist("SPY")
+            print(f"SPY history: {len(h_)} hourly bars {h_.index.min()} to {h_.index.max()}; {len(x_)} extended-hours bars")
+            print("Hourly bars per day (should be 7 on normal days):",
+                  h_.groupby(h_.index.date).size().value_counts().head(4).to_dict())
+            spot_ = float(h_["Close"].iloc[-1])
+            fri_ = dt.date.today() + dt.timedelta(days=(4 - dt.date.today().weekday()) % 7 or 7)
+            occ_ = occ_symbol("call", fri_, round(spot_))
+            print("Option quote", occ_, "mid:", alpaca_option_mid(occ_))
+            start_spy_stream()
+            time.sleep(20)
+            print("Stream:", {k: v for k, v in _STREAM.items() if k != "thread"})
     elif cmd == "dashboard-html":                   # the home server shows this page on your network
         out_ = Path(sys.argv[2] if len(sys.argv) > 2 else HERE / "dashboard.html")
         out_.parent.mkdir(parents=True, exist_ok=True)
