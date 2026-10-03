@@ -2,11 +2,11 @@ name: Runner
 
 # Public timer only. It runs the private bot and saves everything back into the
 # private repo. All bot output goes to a log file in the private repo, so the
-# public run logs show nothing private.
+# public run logs show nothing private. After each run, a sanitized copy (code,
+# paper trades, backtests; never real trades or account data) goes to spy-bot/ here.
 
 on:
   schedule:
-    - cron: "45 13,14 * * 1-5"   # morning read, ~9:45 AM New York
     # live watcher: a start is offered every 30 min (9:07 AM–4:37 PM New York) because
     # GitHub's timer can run hours late or skip. The first one to fire starts the day;
     # later ones wait in line, and exit right away once the day is covered.
@@ -52,6 +52,7 @@ jobs:
         working-directory: bot
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
           EMAIL_APP_PASSWORD: ${{ secrets.EMAIL_APP_PASSWORD }}
         run: |
           if [ "${{ github.event.schedule }}" = "0 23 1 * *" ]; then
@@ -88,6 +89,23 @@ jobs:
           git diff --cached --quiet || git commit -q -m "Bot run $(date -u +%F)"
           git pull -q --rebase --autostash > /dev/null 2>&1 && git push -q > /dev/null 2>&1
           echo "Saved."
+
+      # The shareable copy: built by the bot's own export (which refuses to run if the
+      # account number appears anywhere), then pushed to this public repo.
+      - name: Publish the public copy (paper trading only)
+        if: always()
+        run: |
+          (cd bot && python spy_bot.py export-public "$RUNNER_TEMP/public" > /dev/null 2>&1) || { echo "Public copy skipped."; exit 0; }
+          git clone -q "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" pub
+          rm -rf pub/spy-bot && cp -r "$RUNNER_TEMP/public" pub/spy-bot
+          sed 's#](\([^h#][^)]*\))#](spy-bot/\1)#g' pub/spy-bot/README.md > pub/README.md
+          cd pub
+          git config user.name "runner"
+          git config user.email "runner@users.noreply.github.com"
+          git add -A spy-bot README.md
+          git diff --cached --quiet || git commit -q -m "Public copy $(date -u +%F)"
+          git pull -q --rebase > /dev/null 2>&1; git push -q > /dev/null 2>&1 || true
+          echo "Public copy updated."
 
       # GitHub pauses schedules in public repos after 60 days without commits here,
       # so once a month this adds a harmless date stamp to this public repo.
