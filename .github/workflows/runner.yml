@@ -56,6 +56,8 @@ jobs:
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}          # Alpaca PAPER account (data + practice orders)
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
           EMAIL_APP_PASSWORD: ${{ secrets.EMAIL_APP_PASSWORD }}
         run: |
           if [ "${{ github.event.schedule }}" = "0 23 1 * *" ]; then
