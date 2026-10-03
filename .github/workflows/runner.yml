@@ -21,7 +21,7 @@ on:
         description: "What to run"
         type: choice
         default: alert
-        options: [alert, watch, backtest, test-notify, alpaca-check]
+        options: [alert, watch, backtest, test-notify, alpaca-check, research]
 
 permissions:
   contents: write   # only used for the monthly heartbeat that keeps this repo active
