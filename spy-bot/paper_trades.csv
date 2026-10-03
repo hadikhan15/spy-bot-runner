@@ -1,0 +1,2 @@
+id,entry_date,kind,expiration,long,short,entry,status,last_value,exit_date,exit,reason,pnl,entry_time,source,exit_style,strength,exp_value,peak,opinions
+2026-10-01-13:30-put,2026-10-01,put,2026-10-08,743.0,,0.98,closed,0.655,2026-10-01,0.655,close,-32.5,13:30,intraday,runner,0.0912,,0.985,"{""simple"": 0.0389, ""levels"": -0.0057, ""flexible"": -0.0167, ""structure"": -0.0463, ""trend"": -0.035, ""judge"": -0.0912}"
