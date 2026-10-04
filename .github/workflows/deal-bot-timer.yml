@@ -1,0 +1,27 @@
+name: Deal bot timer
+
+# Separate from the SPY bot. Every hour (~9 AM to 11 PM New York) this just asks the
+# private deal-bot repo to run its own workflow. Nothing private is printed here.
+
+on:
+  schedule:
+    - cron: "11 13-23,0-3 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  start:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Start the deal bot
+        env:
+          RAW_TOKEN: ${{ secrets.BOT_REPO_TOKEN }}
+        run: |
+          export GH_TOKEN="$(printf '%s' "$RAW_TOKEN" | tr -d '[:space:]')"   # saved token has a stray line break
+          if gh workflow run deal-bot.yml -R hadikhan15/deal-bot --ref main -f command=run -f searches=0 > out.txt 2>&1; then
+            echo "Started."
+          else
+            echo "Could not start: $(head -c 300 out.txt)"; exit 1
+          fi
